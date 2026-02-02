@@ -1,0 +1,7 @@
+{
+  "name": "善頤護老 - OpsCentre 營運中心",
+  "description": "專業、現代、高效的安老院行政管理中心，整合 AI 智慧分析與營運協作功能。",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

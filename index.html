@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>善頤護老 - OpsCentre</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        // 1. 環境變數初始化
+        window.process = { env: { API_KEY: "" } };
+        window.global = window;
+        
+        // 2. 啟動監控 (Watchdog) - 預留 12 秒緩衝時間
+        window._OPS_CENTRE_WATCHDOG = setTimeout(() => {
+            if (!window._OPS_CENTRE_STARTED) {
+                const statusText = document.getElementById('status-text');
+                if (statusText) {
+                    statusText.innerHTML = 
+                        '<span style="color:#f97316; font-size: 14px; font-weight: 800;">系統啟動超時</span><br>' +
+                        '<p style="color:#94a3b8; font-size: 10px; margin-top: 8px; text-transform: none; line-height: 1.4;">' +
+                        '偵測到資源載入緩慢，請檢查網絡連線。<br>' +
+                        '若您正在使用 Google Sites，請確保已將此 App 部署至 GitHub Pages。<br>' +
+                        '或嘗試重新整理頁面。' +
+                        '</p>';
+                }
+            }
+        }, 12000);
+    </script>
+    <style>
+        :root { --brand-orange: #f97316; }
+        html, body { 
+            height: 100vh; 
+            width: 100vw; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background-color: #f8fafc; 
+            font-family: 'Noto Sans TC', 'Inter', sans-serif; 
+        }
+        #root { height: 100%; width: 100%; }
+        
+        /* 自定義滑動條隱藏工具 (用於看板 View) */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1.5rem; text-align: center; }
+        .loader { width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top: 3px solid var(--brand-orange); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+    </style>
+    <!-- 核心資源導入地圖：統一版本號至 19.0.0，移除衝突項目 -->
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.39.0",
+    "lucide-react": "https://esm.sh/lucide-react@0.468.0",
+    "recharts": "https://esm.sh/recharts@2.13.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
+    <script type="module" src="./index.tsx" onerror="document.getElementById('status-text').innerText='Module Load Error: index.tsx'"></script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root">
+        <div class="loader-container">
+            <div class="loader"></div>
+            <p id="status-text" style="font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.15em; text-transform: uppercase;">
+                SeniorCare OpsCentre<br>
+                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Initializing Core Services...</span>
+            </p>
+        </div>
+    </div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
