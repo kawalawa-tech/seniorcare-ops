@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
-import { Task, TaskStatus, TaskPriority, TaskCategory, RecurringFrequency, LOCATIONS, ASSIGNEES } from '../types';
-import { ICONS, STATUS_COLORS, PRIORITY_COLORS, BRAND_COLORS, LOCATION_STYLE } from '../constants';
-import TaskModal from './TaskModal';
+import { Task, TaskStatus, TaskPriority, TaskCategory, RecurringFrequency, LOCATIONS, ASSIGNEES } from '../types.ts';
+import { ICONS, STATUS_COLORS, PRIORITY_COLORS, BRAND_COLORS, LOCATION_STYLE } from '../constants.tsx';
+import TaskModal from './TaskModal.tsx';
 
 interface TaskBoardProps {
   tasks: Task[];

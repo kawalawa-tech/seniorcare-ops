@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
-import { Task, TaskStatus } from '../types';
-import { ICONS, STATUS_COLORS, PRIORITY_COLORS, LOCATION_STYLE } from '../constants';
-import TaskModal from './TaskModal';
+import { Task, TaskStatus } from '../types.ts';
+import { ICONS, STATUS_COLORS, PRIORITY_COLORS, LOCATION_STYLE } from '../constants.tsx';
+import TaskModal from './TaskModal.tsx';
 
 interface DashboardProps {
   tasks: Task[];
@@ -96,11 +95,6 @@ const Dashboard: React.FC<DashboardProps> = ({ tasks, onUpdateTask, onAddTask = 
                   </div>
                 </div>
               ))}
-              {tasks.filter(t => t.status === status).length === 0 && (
-                <div className="h-32 flex flex-col items-center justify-center border-2 border-dashed border-slate-200/50 rounded-3xl text-slate-300">
-                  <span className="text-[10px] font-black uppercase tracking-widest">暫無事項</span>
-                </div>
-              )}
             </div>
           </div>
         ))}

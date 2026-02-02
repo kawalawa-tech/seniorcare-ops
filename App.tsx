@@ -11,17 +11,17 @@ import {
   OperationalNote,
   ImportantDocument,
   SyncSettings
-} from './types';
-import { ICONS, STATUS_COLORS, PRIORITY_COLORS } from './constants';
-import Sidebar from './components/Sidebar';
-import Dashboard from './components/Dashboard';
-import TaskBoard from './components/TaskBoard';
-import CalendarView from './components/CalendarView';
-import Analytics from './components/Analytics';
-import NotesView from './components/NotesView';
-import ImportantDocsView from './components/ImportantDocsView';
-import AIAssistant from './components/AIAssistant';
-import { syncToGoogle, fetchFromGoogle, syncToGitHub, fetchFromGitHub, sanitizeGistId } from './services/cloudStorage';
+} from './types.ts';
+import { ICONS, STATUS_COLORS, PRIORITY_COLORS } from './constants.tsx';
+import Sidebar from './components/Sidebar.tsx';
+import Dashboard from './components/Dashboard.tsx';
+import TaskBoard from './components/TaskBoard.tsx';
+import CalendarView from './components/CalendarView.tsx';
+import Analytics from './components/Analytics.tsx';
+import NotesView from './components/NotesView.tsx';
+import ImportantDocsView from './components/ImportantDocsView.tsx';
+import AIAssistant from './components/AIAssistant.tsx';
+import { syncToGoogle, fetchFromGoogle, syncToGitHub, fetchFromGitHub, sanitizeGistId } from './services/cloudStorage.ts';
 
 const safeStorage = {
   getItem: (key: string) => {
@@ -65,7 +65,6 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // 使用您提供的 GitHub Token 作為預設
   const [syncSettings, setSyncSettings] = useState<SyncSettings>(() => {
     const saved = safeStorage.getItem('seniorcare_sync_settings');
     if (saved) return JSON.parse(saved);
@@ -141,7 +140,7 @@ const App: React.FC = () => {
       setSyncSettings(prev => ({ ...prev, lastSynced: new Date().toISOString() }));
       alert('數據備份已從雲端復原成功！');
     } else {
-      alert('下載失敗！請檢查您的 Gist ID 是否正確且與該 Token 關聯。');
+      alert('下載失敗！請檢查您的 Gist ID 是否正確。');
     }
     setIsSyncing(false);
   };
@@ -231,7 +230,7 @@ const App: React.FC = () => {
             
             <div className="space-y-6">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Gist 網址或 ID (留空即建立新備份)</label>
+                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Gist 網址或 ID</label>
                 <input 
                   type="text" 
                   placeholder="貼入現有的 Gist 網址" 

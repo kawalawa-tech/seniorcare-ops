@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
-import { ImportantDocument } from '../types';
-import { ICONS } from '../constants';
-import DocModal from './DocModal';
+import { ImportantDocument } from '../types.ts';
+import { ICONS } from '../constants.tsx';
+import DocModal from './DocModal.tsx';
 
 interface ImportantDocsViewProps {
   docs: ImportantDocument[];
