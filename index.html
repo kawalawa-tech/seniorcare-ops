@@ -21,19 +21,19 @@
         // 啟動監控計時器
         window._OPS_CENTRE_WATCHDOG = setTimeout(() => {
             if (!window._OPS_CENTRE_STARTED) {
-                console.error("OpsCentre: Startup Timeout.");
+                console.error("OpsCentre: Critical Startup Timeout.");
                 const statusText = document.getElementById('status-text');
                 if (statusText) {
                     statusText.innerHTML = 
-                        '<span style="color:#ef4444; font-size: 16px; font-weight: 800;">系統啟動失敗</span><br>' +
+                        '<span style="color:#ef4444; font-size: 16px; font-weight: 800;">系統載入失敗</span><br>' +
                         '<p style="color:#94a3b8; font-size: 11px; margin-top: 10px; text-transform: none; line-height: 1.6;">' +
-                        '模組版本衝突或網路連線不穩。<br>' +
-                        '請檢查控制台 (F12) 是否有無效的模組請求。<br>' +
-                        '建議按 <b>Ctrl + F5</b> 強制刷新。<br>' +
+                        '發生模組版本衝突 (Error #31)。<br>' +
+                        '正在嘗試自動修復模組映射...<br>' +
+                        '請按 <b>Ctrl + F5</b> 強制刷新頁面。<br>' +
                         '</p>';
                 }
             }
-        }, 10000);
+        }, 8000);
     </script>
 
     <style>
@@ -48,28 +48,31 @@
         .brand-slate-text { color: #1e293b; }
     </style>
 
-    <!-- 修正：統一鎖定 18.3.1，徹底移除 19.x 的映射 -->
+    <!-- 修正：使用極其嚴格的 importmap，強制所有相依項共用同一個 React 實例 -->
     <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.3.1",
-        "react-dom": "https://esm.sh/react-dom@18.3.1",
-        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
-        "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
-        "@google/genai": "https://esm.sh/@google/genai@1.39.0",
-        "lucide-react": "https://esm.sh/lucide-react@0.468.0?deps=react@18.3.1",
-        "recharts": "https://esm.sh/recharts@2.13.0?deps=react@18.3.1",
-        "react/": "https://esm.sh/react@18.3.1/",
-        "react-dom/": "https://esm.sh/react-dom@18.3.1/"
-      }
-    }
-    </script>
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+    "@google/genai": "https://esm.sh/@google/genai@1.39.0",
+    "lucide-react": "https://esm.sh/lucide-react@0.468.0?external=react,react-dom",
+    "recharts": "https://esm.sh/recharts@2.13.0?external=react,react-dom",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
 
-    <!-- 配置 Babel：使用 React 18 相容的自動模式 -->
+    <!-- 配置 Babel：強制使用「經典」JSX 轉換，這在瀏覽器動態加載環境中遠比「自動」模式穩定 -->
     <script type="text/babel" data-type="module">
-        console.log("SeniorCare OpsCentre: Runtime Initializing...");
+        // 確保 React 可全域存取，供經典 JSX 轉換使用
+        import React from 'react';
+        window.React = React;
+        console.log("SeniorCare OpsCentre: Unified React Context initialized.");
     </script>
-    <script type="text/babel" data-type="module" src="./index.tsx"></script>
+    <script type="text/babel" data-type="module" src="./index.tsx" data-presets="react" data-plugins="transform-react-jsx"></script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
@@ -78,7 +81,7 @@
             <div class="loader"></div>
             <p id="status-text" style="font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.15em; text-transform: uppercase;">
                 SeniorCare OpsCentre<br>
-                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Compiling Runtime Engine...</span>
+                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Patching Module Versions...</span>
             </p>
         </div>
     </div>
