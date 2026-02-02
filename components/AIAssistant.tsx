@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ICONS } from '../constants.tsx';
 import { getGeminiResponse } from '../services/gemini.ts';
@@ -22,8 +23,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onAddTask }) => {
 
   useEffect(scrollToBottom, [messages]);
 
+  const cleanJsonString = (str: string) => {
+    // 移除 markdown 代碼塊標記
+    return str.replace(/```json/g, "").replace(/```/g, "").trim();
+  };
+
   const renderContent = (content: string) => {
-    // 簡單的 Markdown 連結解析器 [text](url)
     const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
     const parts = content.split('\n');
     
@@ -33,9 +38,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onAddTask }) => {
       let match;
 
       while ((match = linkRegex.exec(line)) !== null) {
-        // 加入連結前的文字
         elements.push(line.substring(lastIndex, match.index));
-        // 加入連結元素
         elements.push(
           <a 
             key={`${i}-${match.index}`}
@@ -70,9 +73,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onAddTask }) => {
     const isTaskInput = (userMsg.includes('事項') || userMsg.includes('新增') || userMsg.includes('建立')) && userMsg.length > 5;
     const response = await getGeminiResponse(userMsg, isTaskInput ? 'extract' : 'chat');
 
-    if (isTaskInput && response.trim().startsWith('{')) {
+    const cleanedResponse = cleanJsonString(response);
+
+    if (isTaskInput && cleanedResponse.startsWith('{')) {
       try {
-        const taskData = JSON.parse(response);
+        const taskData = JSON.parse(cleanedResponse);
         onAddTask({
           title: taskData.title || 'AI 事項',
           location: taskData.location || '心薈',
@@ -80,7 +85,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onAddTask }) => {
           status: '待處理',
           priority: taskData.priority || TaskPriority.NORMAL,
           category: taskData.category || TaskCategory.ADMIN,
-          recurring: taskData.isRecurring ? RecurringFrequency.MONTHLY : RecurringFrequency.NONE,
+          recurring: taskData.recurring || RecurringFrequency.NONE,
           deadline: taskData.deadline || new Date().toISOString().split('T')[0],
           description: taskData.description || '由 AI 助手自動提取。',
         });
@@ -101,7 +106,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onAddTask }) => {
         <div className="mb-6 w-[95vw] sm:w-[450px] h-[650px] bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden flex flex-col animate-in slide-in-from-bottom-12 duration-500">
           <div className="p-7 bg-[#1e293b] text-white flex justify-between items-center relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#f97316] opacity-10 blur-3xl -mr-16 -mt-16" />
-            
             <div className="flex items-center gap-4 relative z-10">
               <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xl">
                 <ICONS.AI className="w-7 h-7 text-[#f97316]" />

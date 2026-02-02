@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
@@ -21,6 +22,12 @@ if (container) {
   } catch (err: any) {
     console.error("OpsCentre: Render error.", err);
     const statusText = document.getElementById('status-text');
-    if (statusText) statusText.innerText = "系統崩潰: " + err.message;
+    // 增加空值檢查，防止 React 清除 root 內容後引發 null 錯誤
+    if (statusText) {
+        statusText.innerText = "系統崩潰: " + (err.message || "未知錯誤");
+    } else {
+        // 如果 status-text 已經被 React 移除，則 fallback 到 alert
+        console.error("Critical: Could not find status-text element to report error.");
+    }
   }
 }

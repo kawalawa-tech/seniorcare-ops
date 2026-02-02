@@ -22,7 +22,7 @@ export enum TaskCategory {
 }
 
 export enum RecurringFrequency {
-  NONE = '無',
+  NONE = '單次',
   DAILY = '每日',
   WEEKLY = '每週',
   MONTHLY = '每月',

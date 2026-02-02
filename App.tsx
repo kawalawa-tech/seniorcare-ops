@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Task, 
   TaskStatus, 
@@ -12,7 +12,7 @@ import {
   ImportantDocument,
   SyncSettings
 } from './types.ts';
-import { ICONS, STATUS_COLORS, PRIORITY_COLORS } from './constants.tsx';
+import { ICONS } from './constants.tsx';
 import Sidebar from './components/Sidebar.tsx';
 import Dashboard from './components/Dashboard.tsx';
 import TaskBoard from './components/TaskBoard.tsx';
@@ -21,7 +21,7 @@ import Analytics from './components/Analytics.tsx';
 import NotesView from './components/NotesView.tsx';
 import ImportantDocsView from './components/ImportantDocsView.tsx';
 import AIAssistant from './components/AIAssistant.tsx';
-import { syncToGoogle, fetchFromGoogle, syncToGitHub, fetchFromGitHub, sanitizeGistId } from './services/cloudStorage.ts';
+import { syncToGitHub, fetchFromGitHub, sanitizeGistId } from './services/cloudStorage.ts';
 
 const safeStorage = {
   getItem: (key: string) => {
@@ -35,16 +35,16 @@ const safeStorage = {
 const INITIAL_TASKS: Task[] = [
   {
     id: '1',
-    title: '消防灑水系統年檢 (心薈)',
-    location: '心薈',
-    assignees: ['Chris', 'Gavin'],
+    title: '歡迎使用 OpsCentre',
+    location: '總部營運',
+    assignees: ['Chris'],
     status: TaskStatus.PENDING,
-    priority: TaskPriority.EMERGENCY,
-    category: TaskCategory.SAFETY,
-    recurring: RecurringFrequency.YEARLY,
-    deadline: '2024-05-15',
-    description: '需預約第三方消防工程公司進行年檢並提交報告至消防處。',
-    logs: [{ id: 'l1', user: 'System', action: 'Created task', timestamp: new Date().toISOString() }]
+    priority: TaskPriority.NORMAL,
+    category: TaskCategory.ADMIN,
+    recurring: RecurringFrequency.NONE,
+    deadline: new Date().toISOString().split('T')[0],
+    description: '請前往右下角設定雲端同步，以便在不同裝置間同步數據。',
+    logs: [{ id: 'l1', user: 'System', action: 'Initialized', timestamp: new Date().toISOString() }]
   }
 ];
 
@@ -79,22 +79,63 @@ const App: React.FC = () => {
   });
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatusText, setSyncStatusText] = useState('Cloud Live');
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string, type: 'task' | 'doc' | 'note' } | null>(null);
 
-  useEffect(() => { safeStorage.setItem('seniorcare_tasks', JSON.stringify(tasks)); }, [tasks]);
-  useEffect(() => { safeStorage.setItem('seniorcare_notes', JSON.stringify(notes)); }, [notes]);
-  useEffect(() => { safeStorage.setItem('seniorcare_docs', JSON.stringify(docs)); }, [docs]);
-  useEffect(() => { safeStorage.setItem('seniorcare_sync_settings', JSON.stringify(syncSettings)); }, [syncSettings]);
+  // 用於追蹤本地最後更新時間
+  const localLastUpdated = useRef<string>(safeStorage.getItem('seniorcare_last_updated') || new Date().toISOString());
 
-  const performCloudSync = useCallback(async () => {
-    if (!syncSettings.isEnabled || !syncSettings.githubToken) return;
-    setIsSyncing(true);
-    const dataToSync = { tasks, notes, docs, lastUpdated: new Date().toISOString() };
+  // 儲存數據並更新時間戳記
+  const saveAndTouch = useCallback((type: 'tasks' | 'notes' | 'docs', data: any) => {
+    const timestamp = new Date().toISOString();
+    localLastUpdated.current = timestamp;
+    safeStorage.setItem('seniorcare_last_updated', timestamp);
     
+    if (type === 'tasks') { setTasks(data); safeStorage.setItem('seniorcare_tasks', JSON.stringify(data)); }
+    if (type === 'notes') { setNotes(data); safeStorage.setItem('seniorcare_notes', JSON.stringify(data)); }
+    if (type === 'docs') { setDocs(data); safeStorage.setItem('seniorcare_docs', JSON.stringify(data)); }
+  }, []);
+
+  // 強大同步邏輯：先下載比對，再決定是否上傳
+  const performSmartSync = useCallback(async (isAutoPull = false) => {
+    if (!syncSettings.isEnabled || !syncSettings.githubToken || !syncSettings.gistId) return;
+    
+    setIsSyncing(true);
+    setSyncStatusText(isAutoPull ? 'Checking...' : 'Syncing...');
+
     try {
-      if (syncSettings.provider === 'github') {
+      // 1. 先嘗試獲取雲端最新數據
+      const cloudData = await fetchFromGitHub(syncSettings.githubToken, syncSettings.gistId);
+      
+      if (cloudData && cloudData.lastUpdated) {
+        const cloudTime = new Date(cloudData.lastUpdated).getTime();
+        const localTime = new Date(localLastUpdated.current).getTime();
+
+        // 2. 如果雲端比較新，則更新本地
+        if (cloudTime > localTime) {
+          console.log("OpsCentre: Cloud data is newer. Updating local state...");
+          if (cloudData.tasks) { setTasks(cloudData.tasks); safeStorage.setItem('seniorcare_tasks', JSON.stringify(cloudData.tasks)); }
+          if (cloudData.notes) { setNotes(cloudData.notes); safeStorage.setItem('seniorcare_notes', JSON.stringify(cloudData.notes)); }
+          if (cloudData.docs) { setDocs(cloudData.docs); safeStorage.setItem('seniorcare_docs', JSON.stringify(cloudData.docs)); }
+          localLastUpdated.current = cloudData.lastUpdated;
+          safeStorage.setItem('seniorcare_last_updated', cloudData.lastUpdated);
+          setSyncSettings(prev => ({ ...prev, lastSynced: new Date().toISOString() }));
+          setIsSyncing(false);
+          setSyncStatusText('Cloud Live');
+          return; // 完成同步
+        }
+      }
+
+      // 3. 如果本地比較新 (或是手動觸發)，則將本地上傳至雲端
+      if (!isAutoPull) {
+        const dataToSync = { 
+          tasks, 
+          notes, 
+          docs, 
+          lastUpdated: localLastUpdated.current 
+        };
         const result = await syncToGitHub(syncSettings.githubToken, syncSettings.gistId, dataToSync);
         if (result.success) {
           setSyncSettings(prev => ({ 
@@ -103,47 +144,32 @@ const App: React.FC = () => {
             lastSynced: new Date().toISOString() 
           }));
         }
-      } else if (syncSettings.provider === 'google' && syncSettings.scriptUrl) {
-        const success = await syncToGoogle(syncSettings.scriptUrl, dataToSync);
-        if (success) setSyncSettings(prev => ({ ...prev, lastSynced: new Date().toISOString() }));
       }
     } catch (err) {
-      console.error("Sync Process Error", err);
+      console.error("Smart Sync Error", err);
     }
+
     setIsSyncing(false);
+    setSyncStatusText('Cloud Live');
   }, [syncSettings, tasks, notes, docs]);
 
+  // 啟動時自動拉取
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (syncSettings.isEnabled) performCloudSync();
-    }, 30000);
-    return () => clearTimeout(timer);
-  }, [tasks, notes, docs, syncSettings.isEnabled, performCloudSync]);
-
-  const handlePullData = async () => {
-    setIsSyncing(true);
-    let cloudData = null;
-    try {
-      if (syncSettings.provider === 'github' && syncSettings.githubToken && syncSettings.gistId) {
-        cloudData = await fetchFromGitHub(syncSettings.githubToken, syncSettings.gistId);
-      } else if (syncSettings.provider === 'google' && syncSettings.scriptUrl) {
-        cloudData = await fetchFromGoogle(syncSettings.scriptUrl);
+    const initSync = async () => {
+      if (syncSettings.isEnabled && syncSettings.gistId) {
+        await performSmartSync(true);
       }
-    } catch (err) {
-      console.error("Fetch Data Error", err);
-    }
+    };
+    initSync();
+  }, []);
 
-    if (cloudData) {
-      if (cloudData.tasks) setTasks(cloudData.tasks);
-      if (cloudData.notes) setNotes(cloudData.notes);
-      if (cloudData.docs) setDocs(cloudData.docs);
-      setSyncSettings(prev => ({ ...prev, lastSynced: new Date().toISOString() }));
-      alert('數據備份已從雲端復原成功！');
-    } else {
-      alert('下載失敗！請檢查您的 Gist ID 是否正確。');
-    }
-    setIsSyncing(false);
-  };
+  // 定時同步 (每 60 秒檢查一次)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (syncSettings.isEnabled) performSmartSync(true);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [performSmartSync, syncSettings.isEnabled]);
 
   const notifications = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -151,13 +177,6 @@ const App: React.FC = () => {
     const todayTasks = tasks.filter(t => t.status !== TaskStatus.COMPLETED && t.deadline === today);
     return { overdue: overdue.length, today: todayTasks.length };
   }, [tasks]);
-
-  const addTask = (task: any) => {
-    const newTask = { ...task, id: Math.random().toString(36).substr(2, 9), logs: [{ id: Date.now().toString(), user: currentUser, action: '創建了事項', timestamp: new Date().toISOString() }] };
-    setTasks(prev => [newTask, ...prev]);
-  };
-
-  const updateTask = (id: string, updates: any) => setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-[#f8fafc]">
@@ -183,9 +202,9 @@ const App: React.FC = () => {
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border cursor-pointer transition-all ${syncSettings.isEnabled ? 'bg-emerald-50 border-emerald-100 shadow-sm' : 'bg-slate-50 border-slate-100'}`}
                 onClick={() => setShowSyncModal(true)}
               >
-                {syncSettings.provider === 'github' ? <ICONS.Github className={`w-3.5 h-3.5 ${syncSettings.isEnabled ? 'text-slate-800' : 'text-slate-300'}`} /> : <ICONS.Cloud className={`w-3.5 h-3.5 ${syncSettings.isEnabled ? 'text-emerald-500' : 'text-slate-300'}`} />}
-                <span className={`text-[9px] font-black uppercase tracking-widest ${syncSettings.isEnabled ? (syncSettings.provider === 'github' ? 'text-slate-800' : 'text-emerald-600') : 'text-slate-400'}`}>
-                  {syncSettings.isEnabled ? (isSyncing ? 'Syncing...' : 'Cloud Live') : 'Offline'}
+                <ICONS.Github className={`w-3.5 h-3.5 ${syncSettings.isEnabled ? 'text-slate-800' : 'text-slate-300'}`} />
+                <span className={`text-[9px] font-black uppercase tracking-widest ${syncSettings.isEnabled ? 'text-slate-800' : 'text-slate-400'}`}>
+                  {syncSettings.isEnabled ? (isSyncing ? syncStatusText : 'Cloud Live') : 'Offline'}
                 </span>
               </div>
             </div>
@@ -203,12 +222,12 @@ const App: React.FC = () => {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-          {activeView === 'Table' && <TaskBoard tasks={tasks} onUpdateTask={updateTask} onAddTask={addTask} onDeleteTask={(id) => setConfirmDelete({id, type:'task'})} />}
-          {activeView === 'Kanban' && <Dashboard tasks={tasks} onUpdateTask={updateTask} onDeleteTask={(id) => setConfirmDelete({id, type:'task'})} />}
+          {activeView === 'Table' && <TaskBoard tasks={tasks} onUpdateTask={(id, u) => saveAndTouch('tasks', tasks.map(t=>t.id===id?{...t,...u}:t))} onAddTask={(t) => saveAndTouch('tasks', [{...t, id: Math.random().toString(36).substr(2,9), logs:[]}, ...tasks])} onDeleteTask={(id) => setConfirmDelete({id, type:'task'})} />}
+          {activeView === 'Kanban' && <Dashboard tasks={tasks} onUpdateTask={(id, u) => saveAndTouch('tasks', tasks.map(t=>t.id===id?{...t,...u}:t))} onDeleteTask={(id) => setConfirmDelete({id, type:'task'})} />}
           {activeView === 'Calendar' && <CalendarView tasks={tasks} />}
           {activeView === 'Analytics' && <Analytics tasks={tasks} />}
-          {activeView === 'Notes' && <NotesView notes={notes} setNotes={setNotes} />}
-          {activeView === 'Docs' && <ImportantDocsView docs={docs} onAddDoc={(d) => setDocs(prev=>[...prev, {...d, id: Math.random().toString(36).substr(2,9)}])} onUpdateDoc={(id, u) => setDocs(prev=>prev.map(d=>d.id===id?{...d,...u}:d))} onDeleteDoc={(id) => setConfirmDelete({id, type:'doc'})} />}
+          {activeView === 'Notes' && <NotesView notes={notes} setNotes={(val) => { const next = typeof val === 'function' ? val(notes) : val; saveAndTouch('notes', next); }} />}
+          {activeView === 'Docs' && <ImportantDocsView docs={docs} onAddDoc={(d) => saveAndTouch('docs', [{...d, id: Math.random().toString(36).substr(2,9)}, ...docs])} onUpdateDoc={(id, u) => saveAndTouch('docs', docs.map(d=>d.id===id?{...d,...u}:d))} onDeleteDoc={(id) => setConfirmDelete({id, type:'doc'})} />}
         </div>
       </main>
 
@@ -217,12 +236,12 @@ const App: React.FC = () => {
           <div className="bg-white rounded-[2.5rem] w-full max-w-xl p-8 shadow-2xl border border-slate-100 animate-in zoom-in duration-300">
             <div className="flex justify-between items-center mb-8">
               <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-colors ${syncSettings.provider === 'github' ? 'bg-slate-900 text-white' : 'bg-emerald-50 text-emerald-500'}`}>
-                  {syncSettings.provider === 'github' ? <ICONS.Github className="w-7 h-7" /> : <ICONS.Cloud className="w-7 h-7" />}
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg bg-slate-900 text-white">
+                  <ICONS.Github className="w-7 h-7" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black brand-slate-text">雲端儲存中心</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Database Engine Configuration</p>
+                  <h3 className="text-2xl font-black brand-slate-text">雲端同步中心</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Multi-Device Synchronization</p>
                 </div>
               </div>
               <button onClick={() => setShowSyncModal(false)} className="w-10 h-10 flex items-center justify-center bg-slate-50 rounded-full text-slate-400 hover:text-rose-500 transition-colors">×</button>
@@ -231,19 +250,19 @@ const App: React.FC = () => {
             <div className="space-y-6">
               <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
                 <div className="flex items-center gap-2 mb-2">
-                  <ICONS.Link className="w-4 h-4 text-blue-500" />
-                  <span className="text-xs font-black text-blue-700 uppercase tracking-tight">如何取得 ID？</span>
+                  <ICONS.Warning className="w-4 h-4 text-blue-500" />
+                  <span className="text-xs font-black text-blue-700 uppercase tracking-tight">多裝置同步要領</span>
                 </div>
                 <p className="text-[11px] text-blue-600 leading-relaxed font-medium">
-                  前往 <a href="https://gist.github.com" target="_blank" className="underline font-black">GitHub Gist</a> 建立新文件，複製網址最後一串英數 ID，或直接將整個網址貼在下方。
+                  請確保您的所有裝置 (電腦、手機) 都填入 **同一個** Gist ID 與 Token。系統會自動偵測並同步最新的異動。
                 </p>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Gist 網址或 ID</label>
+                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Gist ID (多裝置需一致)</label>
                 <input 
                   type="text" 
-                  placeholder="貼入 Gist 網址 (如 https://gist.github.com/...)" 
+                  placeholder="貼入 Gist 網址或 ID" 
                   className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-slate-900 font-bold text-sm"
                   value={syncSettings.gistId}
                   onChange={(e) => setSyncSettings(prev => ({ ...prev, gistId: e.target.value }))}
@@ -253,8 +272,8 @@ const App: React.FC = () => {
 
               <div className="flex items-center justify-between p-5 bg-slate-50 rounded-[1.5rem] border border-slate-100">
                 <div>
-                  <p className="font-black text-sm text-slate-700">GitHub 自動備份模式</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Using Private Token Integration</p>
+                  <p className="font-black text-sm text-slate-700">自動雲端備份</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Real-time Cloud Integration</p>
                 </div>
                 <button onClick={() => setSyncSettings(prev => ({ ...prev, isEnabled: !prev.isEnabled }))} className={`w-14 h-8 rounded-full transition-all relative ${syncSettings.isEnabled ? 'bg-slate-900' : 'bg-slate-300'}`}>
                   <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${syncSettings.isEnabled ? 'left-7 shadow-lg' : 'left-1'}`} />
@@ -262,11 +281,11 @@ const App: React.FC = () => {
               </div>
 
               <div className="flex gap-4 pt-6 border-t border-slate-100">
-                <button onClick={handlePullData} disabled={isSyncing} className="flex-1 flex items-center justify-center gap-2 py-4 bg-slate-100 text-slate-600 font-black rounded-2xl hover:bg-slate-200 disabled:opacity-50 transition-all">
-                  <ICONS.Refresh className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /> 下載數據
+                <button onClick={() => performSmartSync(true)} disabled={isSyncing} className="flex-1 flex items-center justify-center gap-2 py-4 bg-slate-100 text-slate-600 font-black rounded-2xl hover:bg-slate-200 disabled:opacity-50 transition-all">
+                  <ICONS.Refresh className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /> 下載更新
                 </button>
-                <button onClick={performCloudSync} disabled={isSyncing} className="flex-1 flex items-center justify-center gap-2 py-4 text-white font-black rounded-2xl shadow-xl bg-slate-900 shadow-slate-200 transition-all hover:opacity-90 active:scale-95 disabled:opacity-50">
-                  <ICONS.Cloud className="w-4 h-4" /> 立即同步
+                <button onClick={() => performSmartSync(false)} disabled={isSyncing} className="flex-1 flex items-center justify-center gap-2 py-4 text-white font-black rounded-2xl shadow-xl bg-slate-900 shadow-slate-200 transition-all hover:opacity-90 active:scale-95 disabled:opacity-50">
+                  <ICONS.Cloud className="w-4 h-4" /> 立即上傳
                 </button>
               </div>
             </div>
@@ -285,9 +304,9 @@ const App: React.FC = () => {
             <div className="flex gap-3">
               <button onClick={() => setConfirmDelete(null)} className="flex-1 py-3.5 bg-slate-100 rounded-xl font-black text-slate-500">取消</button>
               <button onClick={() => {
-                if(confirmDelete.type==='task') setTasks(prev=>prev.filter(t=>t.id!==confirmDelete.id));
-                if(confirmDelete.type==='doc') setDocs(prev=>prev.filter(d=>d.id!==confirmDelete.id));
-                if(confirmDelete.type==='note') setNotes(prev=>prev.filter(n=>n.id!==confirmDelete.id));
+                if(confirmDelete.type==='task') saveAndTouch('tasks', tasks.filter(t=>t.id!==confirmDelete.id));
+                if(confirmDelete.type==='doc') saveAndTouch('docs', docs.filter(d=>d.id!==confirmDelete.id));
+                if(confirmDelete.type==='note') saveAndTouch('notes', notes.filter(n=>n.id!==confirmDelete.id));
                 setConfirmDelete(null);
               }} className="flex-1 py-3.5 bg-rose-500 text-white rounded-xl font-black shadow-lg shadow-rose-100">刪除</button>
             </div>
@@ -295,7 +314,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <AIAssistant onAddTask={addTask} />
+      <AIAssistant onAddTask={(t) => saveAndTouch('tasks', [{...t, id: Math.random().toString(36).substr(2,9), logs:[]}, ...tasks])} />
     </div>
   );
 };

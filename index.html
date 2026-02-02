@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
@@ -27,7 +28,6 @@
           }
         }
         
-        window.process = { env: { API_KEY: "" } };
         window.global = window;
     </script>
 
@@ -102,57 +102,41 @@
         // Robust Path Resolver
         function resolvePath(basePath, relPath) {
             if (!relPath.startsWith('.')) return relPath;
-            
-            // Remove optional extension from relPath for easier matching
             const cleanRelPath = relPath.replace(/\.(tsx?)$/, '');
-            
             const baseParts = basePath.split('/').slice(0, -1);
             const relParts = cleanRelPath.split('/');
-            
             const finalParts = [...baseParts];
             for (const part of relParts) {
                 if (part === '..') finalParts.pop();
                 else if (part !== '.') finalParts.push(part);
             }
-            
             const finalPath = finalParts.join('/');
-            // Check for potential source file matches
             if (rawSources[finalPath + '.tsx']) return finalPath + '.tsx';
             if (rawSources[finalPath + '.ts']) return finalPath + '.ts';
-            if (rawSources[finalPath]) return finalPath; // Case where file is registered without extension
-            
+            if (rawSources[finalPath]) return finalPath;
             return finalPath;
         }
 
         // Recursive Module Compiler
         async function compileFile(filePath) {
             if (blobUrls[filePath]) return blobUrls[filePath];
-            
             let content = rawSources[filePath];
             if (!content) throw new Error(`Missing source for "${filePath}"`);
-
-            // Improved regex to find all import/export from statements
             const importRegex = /(from|import)\s+['"](\.\.?\/[^'"]+)['"]/g;
             const matches = [...content.matchAll(importRegex)];
-            
-            // Compile dependencies first
             for (const match of matches) {
                 const relPath = match[2];
                 const absPath = resolvePath(filePath, relPath);
-                
                 if (rawSources[absPath]) {
                     const childBlobUrl = await compileFile(absPath);
-                    // Global replacement for this specific import path
                     content = content.split(match[0]).join(`${match[1]} "${childBlobUrl}"`);
                 }
             }
-
             try {
                 const transformed = Babel.transform(content, {
                     presets: ['react', 'typescript'],
                     filename: filePath
                 }).code;
-
                 const blob = new Blob([transformed], { type: 'application/javascript' });
                 const url = URL.createObjectURL(blob);
                 blobUrls[filePath] = url;
@@ -173,32 +157,29 @@
                 'components/ImportantDocsView.tsx', 'components/AIAssistant.tsx', 'components/TaskModal.tsx',
                 'components/DocModal.tsx', 'App.tsx', 'index.tsx'
             ];
-
             try {
-                subtext.innerText = "Connecting to Facility...";
+                if (subtext) subtext.innerText = "Connecting to Facility...";
                 await Promise.all(filesToFetch.map(async (f) => {
                     const r = await fetch(f);
                     if (!r.ok) throw new Error(`Fetch failed for ${f}`);
                     rawSources[f] = await r.text();
                 }));
-
-                subtext.innerText = "Synchronizing Components...";
+                if (subtext) subtext.innerText = "Synchronizing Components...";
                 const entryPointUrl = await compileFile('index.tsx');
-
-                subtext.innerText = "Welcome Back.";
+                if (subtext) subtext.innerText = "Welcome Back.";
                 const script = document.createElement('script');
                 script.type = 'module';
                 script.src = entryPointUrl;
                 document.head.appendChild(script);
-
                 console.log("OpsCentre: Boot Successful.");
             } catch (err) {
                 console.error("OpsCentre Critical Boot Failure:", err);
                 const statusText = document.getElementById('status-text');
-                statusText.innerHTML = `<span style="color:#f43f5e; font-weight:800">SYSTEM HALTED</span><br><span style="text-transform:none; font-size:10px; color:#94a3b8; font-weight:400">${err.message}</span>`;
+                if (statusText) {
+                    statusText.innerHTML = `<span style="color:#f43f5e; font-weight:800">SYSTEM HALTED</span><br><span style="text-transform:none; font-size:10px; color:#94a3b8; font-weight:400">${err.message}</span>`;
+                }
             }
         }
-
         window.addEventListener('load', init);
     </script>
 <script type="module" src="/index.tsx"></script>
