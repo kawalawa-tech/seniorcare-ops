@@ -11,7 +11,6 @@
     <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
     
     <script>
-        // Tailwind Configuration for SeniorCare Brand
         tailwind.config = {
           theme: {
             extend: {
@@ -27,7 +26,6 @@
             }
           }
         }
-        
         window.global = window;
     </script>
 
@@ -42,7 +40,6 @@
         html, body { height: 100vh; width: 100vw; margin: 0; padding: 0; overflow: hidden; background-color: #f8fafc; font-family: 'Noto Sans TC', 'Inter', sans-serif; }
         #root { height: 100%; width: 100%; }
         
-        /* Brand Utility Classes */
         .brand-orange-bg { background-color: var(--brand-orange); }
         .brand-orange-text { color: var(--brand-orange); }
         .brand-blue-bg { background-color: var(--brand-blue); }
@@ -52,12 +49,14 @@
         .brand-slate-bg { background-color: var(--brand-slate); }
         .brand-slate-text { color: var(--brand-slate); }
 
-        /* Loader */
-        .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1.5rem; text-align: center; }
-        .loader { width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top: 3px solid var(--brand-orange); border-radius: 50%; animation: spin 1s linear infinite; }
+        .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1.5rem; text-align: center; padding: 20px; }
+        .loader { width: 40px; height: 40px; border: 4px solid #f1f5f9; border-top: 4px solid var(--brand-orange); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Scrollbars */
+        .error-box { background: white; padding: 2rem; border-radius: 2rem; box-shadow: 0 20px 50px rgba(0,0,0,0.1); max-width: 400px; width: 100%; border: 1px solid #fee2e2; }
+        .btn-reset { margin-top: 1.5rem; background: #1e293b; color: white; padding: 0.75rem 1.5rem; border-radius: 1rem; font-weight: 800; font-size: 12px; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-reset:hover { background: #f43f5e; transform: scale(1.05); }
+
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
@@ -87,11 +86,19 @@
 <body>
     <div id="root">
         <div class="loader-container">
-            <div class="loader"></div>
-            <p id="status-text" style="font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.15em; text-transform: uppercase;">
-                SeniorCare OpsCentre<br>
-                <span id="loading-subtext" style="font-weight: 400; opacity: 0.6; font-size: 9px;">Assembling Operations...</span>
-            </p>
+            <div id="loading-spinner" class="loader"></div>
+            <div id="error-display" style="display:none" class="error-box">
+                <div style="color:#f43f5e; font-size:24px; margin-bottom:1rem">⚠️</div>
+                <p id="status-text" style="font-size: 14px; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;"></p>
+                <p id="error-details" style="font-size: 10px; color: #94a3b8; font-weight: 400; line-height: 1.6;"></p>
+                <button class="btn-reset" onclick="handleEmergencyReset()">強制重置系統 (清空快取)</button>
+            </div>
+            <div id="boot-info">
+                <p style="font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.15em; text-transform: uppercase;">
+                    SeniorCare OpsCentre<br>
+                    <span id="loading-subtext" style="font-weight: 400; opacity: 0.6; font-size: 9px;">Assembling Operations...</span>
+                </p>
+            </div>
         </div>
     </div>
 
@@ -99,7 +106,13 @@
         const rawSources = {};
         const blobUrls = {};
 
-        // Robust Path Resolver
+        function handleEmergencyReset() {
+            if (confirm("這將清除所有未同步到雲端的本地資料，並嘗試重新載入。確定嗎？")) {
+                localStorage.clear();
+                window.location.reload();
+            }
+        }
+
         function resolvePath(basePath, relPath) {
             if (!relPath.startsWith('.')) return relPath;
             const cleanRelPath = relPath.replace(/\.(tsx?)$/, '');
@@ -117,11 +130,11 @@
             return finalPath;
         }
 
-        // Recursive Module Compiler
         async function compileFile(filePath) {
             if (blobUrls[filePath]) return blobUrls[filePath];
             let content = rawSources[filePath];
-            if (!content) throw new Error(`Missing source for "${filePath}"`);
+            if (!content) throw new Error(`找不到檔案: "${filePath}"`);
+            
             const importRegex = /(from|import)\s+['"](\.\.?\/[^'"]+)['"]/g;
             const matches = [...content.matchAll(importRegex)];
             for (const match of matches) {
@@ -142,8 +155,7 @@
                 blobUrls[filePath] = url;
                 return url;
             } catch (babelErr) {
-                console.error(`Babel Error in ${filePath}:`, babelErr);
-                throw babelErr;
+                throw new Error(`編譯錯誤 [${filePath}]: ${babelErr.message}`);
             }
         }
 
@@ -157,15 +169,18 @@
                 'components/ImportantDocsView.tsx', 'components/AIAssistant.tsx', 'components/TaskModal.tsx',
                 'components/DocModal.tsx', 'App.tsx', 'index.tsx'
             ];
+            
             try {
                 if (subtext) subtext.innerText = "Connecting to Facility...";
                 await Promise.all(filesToFetch.map(async (f) => {
                     const r = await fetch(f);
-                    if (!r.ok) throw new Error(`Fetch failed for ${f}`);
+                    if (!r.ok) throw new Error(`無法下載核心組件: ${f}`);
                     rawSources[f] = await r.text();
                 }));
+                
                 if (subtext) subtext.innerText = "Synchronizing Components...";
                 const entryPointUrl = await compileFile('index.tsx');
+                
                 if (subtext) subtext.innerText = "Welcome Back.";
                 const script = document.createElement('script');
                 script.type = 'module';
@@ -174,9 +189,17 @@
                 console.log("OpsCentre: Boot Successful.");
             } catch (err) {
                 console.error("OpsCentre Critical Boot Failure:", err);
+                document.getElementById('loading-spinner').style.display = 'none';
+                document.getElementById('boot-info').style.display = 'none';
+                
+                const errorDisplay = document.getElementById('error-display');
                 const statusText = document.getElementById('status-text');
-                if (statusText) {
-                    statusText.innerHTML = `<span style="color:#f43f5e; font-weight:800">SYSTEM HALTED</span><br><span style="text-transform:none; font-size:10px; color:#94a3b8; font-weight:400">${err.message}</span>`;
+                const errorDetails = document.getElementById('error-details');
+                
+                if (errorDisplay) {
+                    errorDisplay.style.display = 'block';
+                    statusText.innerText = "啟動程序中斷";
+                    errorDetails.innerText = err.message || "發生未知錯誤，請嘗試重置系統。";
                 }
             }
         }

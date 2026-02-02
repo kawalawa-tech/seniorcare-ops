@@ -53,22 +53,44 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewType>('Table');
   const [currentUser, setCurrentUser] = useState<string>(ASSIGNEES[0]);
   
+  // 使用安全解析，防止 LocalStorage 數據損毀引發崩潰
   const [tasks, setTasks] = useState<Task[]>(() => {
-    const saved = safeStorage.getItem('seniorcare_tasks');
-    return saved ? JSON.parse(saved) : INITIAL_TASKS;
+    try {
+      const saved = safeStorage.getItem('seniorcare_tasks');
+      return saved ? JSON.parse(saved) : INITIAL_TASKS;
+    } catch (e) {
+      console.error("Failed to parse tasks from storage", e);
+      return INITIAL_TASKS;
+    }
   });
+
   const [notes, setNotes] = useState<OperationalNote[]>(() => {
-    const saved = safeStorage.getItem('seniorcare_notes');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = safeStorage.getItem('seniorcare_notes');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to parse notes from storage", e);
+      return [];
+    }
   });
+
   const [docs, setDocs] = useState<ImportantDocument[]>(() => {
-    const saved = safeStorage.getItem('seniorcare_docs');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = safeStorage.getItem('seniorcare_docs');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to parse docs from storage", e);
+      return [];
+    }
   });
 
   const [syncSettings, setSyncSettings] = useState<SyncSettings>(() => {
-    const saved = safeStorage.getItem('seniorcare_sync_settings');
-    if (saved) return JSON.parse(saved);
+    try {
+      const saved = safeStorage.getItem('seniorcare_sync_settings');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse sync settings", e);
+    }
     return { 
       provider: 'github', 
       isEnabled: true, 
@@ -107,19 +129,13 @@ const App: React.FC = () => {
     if (!isValidFormat) {
       if (!isAutoPull && gid) {
         if (syncSettings.gistId.startsWith('ghp_')) {
-          alert("錯誤：您填入的是 Token 而非 Gist ID。請確保 Token 已正確填入，此欄位應填入 20-32 位代碼。");
+          alert("錯誤：您填入的是 Token 而非 Gist ID。");
         } else {
-          alert("Gist ID 格式不正確。請輸入 20 或 32 位的字母數字編號。");
+          alert("Gist ID 格式不正確。");
         }
         return;
       }
-      if (isAutoPull || !gid) {
-        if (!isAutoPull) {
-            // 手動觸發且 gid 為空，代表想建立新 Gist
-        } else {
-            return; // 自動拉取但沒 ID 則直接返回
-        }
-      }
+      if (isAutoPull || !gid) return;
     }
     
     setIsSyncing(true);
@@ -160,7 +176,7 @@ const App: React.FC = () => {
             safeStorage.setItem('seniorcare_sync_settings', JSON.stringify(next));
             return next;
           });
-          if (!isAutoPull) alert("同步成功！" + (gid ? "" : "\n系統已自動為您建立並填入新 Gist ID。"));
+          if (!isAutoPull) alert("同步成功！");
         } else if (!isAutoPull) {
           alert(result.message || "同步失敗");
         }
