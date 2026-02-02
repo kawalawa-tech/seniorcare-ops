@@ -21,14 +21,15 @@
         // 啟動監控計時器
         window._OPS_CENTRE_WATCHDOG = setTimeout(() => {
             if (!window._OPS_CENTRE_STARTED) {
+                console.error("OpsCentre: Startup Timeout detected.");
                 const statusText = document.getElementById('status-text');
                 if (statusText) {
                     statusText.innerHTML = 
                         '<span style="color:#ef4444; font-size: 16px; font-weight: 800;">系統啟動超時</span><br>' +
                         '<p style="color:#94a3b8; font-size: 11px; margin-top: 10px; text-transform: none; line-height: 1.6;">' +
-                        '正在獲取雲端資源，請稍候...<br>' +
-                        '若持續出現此訊息，請檢查網路連線或 GitHub Action 部署。<br>' +
-                        '建議按 <b>Ctrl + F5</b> 強制重新整理頁面。<br>' +
+                        '模組解析失敗或網路連線不穩。<br>' +
+                        '請檢查控制台 (F12) 是否有 404 或 Version Conflict 錯誤。<br>' +
+                        '建議按 <b>Ctrl + F5</b> 強制重新整理。<br>' +
                         '</p>';
                 }
             }
@@ -44,26 +45,26 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 
-    <!-- 統一 React 18.3.1，移除所有衝突的 19.x 引用 -->
+    <!-- 統一鎖定 React 18.3.1，移除所有 19.x 的「毒藥」映射 -->
     <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@18.3.1",
-    "react-dom": "https://esm.sh/react-dom@18.3.1",
-    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
-    "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
-    "@google/genai": "https://esm.sh/@google/genai@1.39.0",
-    "lucide-react": "https://esm.sh/lucide-react@0.468.0?deps=react@18.3.1",
-    "recharts": "https://esm.sh/recharts@2.13.0?deps=react@18.3.1",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/"
-  }
-}
-</script>
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.3.1",
+        "react-dom": "https://esm.sh/react-dom@18.3.1",
+        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+        "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+        "@google/genai": "https://esm.sh/@google/genai@1.39.0",
+        "lucide-react": "https://esm.sh/lucide-react@0.468.0?deps=react@18.3.1",
+        "recharts": "https://esm.sh/recharts@2.13.0?deps=react@18.3.1",
+        "react/": "https://esm.sh/react@18.3.1/",
+        "react-dom/": "https://esm.sh/react-dom@18.3.1/"
+      }
+    }
+    </script>
 
-    <!-- 配置 Babel 並在成功轉譯後清除 Watchdog -->
+    <!-- 監控腳本加載 -->
     <script type="text/babel" data-type="module">
-        console.log("SeniorCare OpsCentre: Runtime Initializing...");
+        console.log("OpsCentre: Core Runtime Executing...");
     </script>
     <script type="text/babel" data-type="module" src="./index.tsx"></script>
 <link rel="stylesheet" href="/index.css">
