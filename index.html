@@ -7,34 +7,11 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    
-    <!-- Babel 運行時轉譯器 -->
-    <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
     
     <script>
-        // 初始化環境變數
         window.process = { env: { API_KEY: "" } };
         window.global = window;
-        
-        window._OPS_CENTRE_STARTED = false;
-
-        // 監控計時器：如果 10 秒內 index.tsx 沒有清除它，顯示錯誤
-        window._OPS_CENTRE_WATCHDOG = setTimeout(() => {
-            if (!window._OPS_CENTRE_STARTED) {
-                console.error("OpsCentre: Startup failure detected.");
-                const statusText = document.getElementById('status-text');
-                if (statusText) {
-                    statusText.innerHTML = 
-                        '<span style="color:#ef4444; font-size: 16px; font-weight: 800;">系統啟動失敗</span><br>' +
-                        '<p style="color:#94a3b8; font-size: 11px; margin-top: 10px; text-transform: none; line-height: 1.6;">' +
-                        '偵測到代碼編譯錯誤或資源載入異常。<br>' +
-                        '這通常是由於模組版本衝突 (React #31) 或 TypeScript 解析失敗引起。<br>' +
-                        '請檢查瀏覽器控制台 (F12) 獲取具體報錯內容。<br>' +
-                        '建議按 <b>Ctrl + F5</b> 強制刷新。<br>' +
-                        '</p>';
-                }
-            }
-        }, 10000);
     </script>
 
     <style>
@@ -44,30 +21,23 @@
         .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1.5rem; text-align: center; }
         .loader { width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top: 3px solid var(--brand-orange); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .brand-orange-text { color: var(--brand-orange); }
-        .brand-orange-bg { background-color: var(--brand-orange); }
-        .brand-slate-text { color: #1e293b; }
     </style>
 
-    <!-- 修正：嚴格鎖定 18.2.0，徹底移除任何指向 React 19 的映射 -->
     <script type="importmap">
     {
       "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom": "https://esm.sh/react-dom@18.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
-        "lucide-react": "https://esm.sh/lucide-react@0.468.0?deps=react@18.2.0",
-        "recharts": "https://esm.sh/recharts@2.13.0?deps=react@18.2.0",
-        "@google/genai": "https://esm.sh/@google/genai@1.39.0",
-        "react/": "https://esm.sh/react@18.2.0/",
-        "react-dom/": "https://esm.sh/react-dom@18.2.0/"
+        "react": "https://esm.sh/react@18.3.1",
+        "react-dom": "https://esm.sh/react-dom@18.3.1",
+        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+        "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+        "lucide-react": "https://esm.sh/lucide-react@0.468.0?deps=react@18.3.1",
+        "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.3.1",
+        "@google/genai": "https://esm.sh/@google/genai@1.3.0",
+        "react/": "https://esm.sh/react@18.3.1/",
+        "react-dom/": "https://esm.sh/react-dom@18.3.1/"
       }
     }
     </script>
-
-    <!-- 設置 Babel 以支持 TypeScript 和 React -->
-    <script type="text/babel" data-type="module" data-presets="react,typescript" src="index.tsx"></script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
@@ -76,10 +46,109 @@
             <div class="loader"></div>
             <p id="status-text" style="font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.15em; text-transform: uppercase;">
                 SeniorCare OpsCentre<br>
-                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Initializing Runtime...</span>
+                <span id="loading-subtext" style="font-weight: 400; opacity: 0.6; font-size: 9px;">Bootstrapping Digital Facility...</span>
             </p>
         </div>
     </div>
+
+    <script type="text/javascript">
+        const rawSources = {};
+        const blobUrls = {};
+
+        // 1. 路徑標準化工具 (處理 ./ 和 ../)
+        function resolvePath(basePath, relPath) {
+            // 如果不是相對路徑，直接回傳
+            if (!relPath.startsWith('.')) return relPath;
+            
+            const baseParts = basePath.split('/').slice(0, -1);
+            const relParts = relPath.replace(/\.(tsx?)$/, '').split('/');
+            
+            for (const part of relParts) {
+                if (part === '..') baseParts.pop();
+                else if (part !== '.') baseParts.push(part);
+            }
+            
+            const finalPath = baseParts.join('/');
+            // 嘗試匹配 .ts 或 .tsx
+            if (rawSources[finalPath + '.tsx']) return finalPath + '.tsx';
+            if (rawSources[finalPath + '.ts']) return finalPath + '.ts';
+            return finalPath;
+        }
+
+        // 2. 遞歸編譯器
+        async function compileFile(filePath) {
+            if (blobUrls[filePath]) return blobUrls[filePath];
+            
+            let content = rawSources[filePath];
+            if (!content) throw new Error(`Missing source for ${filePath}`);
+
+            // 尋找所有 import 並遞歸處理
+            const importRegex = /from\s+['"](\.\/|\.\.\/)([^'"]+)['"]/g;
+            const matches = [...content.matchAll(importRegex)];
+            
+            for (const match of matches) {
+                const relPath = match[1] + match[2];
+                const absPath = resolvePath(filePath, relPath);
+                
+                if (rawSources[absPath]) {
+                    const childBlobUrl = await compileFile(absPath);
+                    content = content.replace(match[0], `from "${childBlobUrl}"`);
+                }
+            }
+
+            // 使用 Babel 轉換
+            const transformed = Babel.transform(content, {
+                presets: ['react', 'typescript'],
+                filename: filePath
+            }).code;
+
+            const blob = new Blob([transformed], { type: 'application/javascript' });
+            const url = URL.createObjectURL(blob);
+            blobUrls[filePath] = url;
+            return url;
+        }
+
+        async function init() {
+            const subtext = document.getElementById('loading-subtext');
+            const filesToFetch = [
+                'types.ts', 'constants.tsx', 
+                'services/gemini.ts', 'services/cloudStorage.ts',
+                'components/Sidebar.tsx', 'components/Dashboard.tsx', 'components/TaskBoard.tsx',
+                'components/CalendarView.tsx', 'components/Analytics.tsx', 'components/NotesView.tsx',
+                'components/ImportantDocsView.tsx', 'components/AIAssistant.tsx', 'components/TaskModal.tsx',
+                'components/DocModal.tsx', 'App.tsx', 'index.tsx'
+            ];
+
+            try {
+                // 第一階段：全部抓取
+                subtext.innerText = "Fetching Resources...";
+                await Promise.all(filesToFetch.map(async (f) => {
+                    const r = await fetch(f);
+                    if (!r.ok) throw new Error(`Fetch failed for ${f}`);
+                    rawSources[f] = await r.text();
+                }));
+
+                // 第二階段：遞歸編譯
+                subtext.innerText = "Compiling Modules...";
+                const entryPointUrl = await compileFile('index.tsx');
+
+                // 第三階段：啟動
+                subtext.innerText = "Launching...";
+                const script = document.createElement('script');
+                script.type = 'module';
+                script.src = entryPointUrl;
+                document.head.appendChild(script);
+
+                console.log("OpsCentre: Boot successful.");
+            } catch (err) {
+                console.error("OpsCentre Boot Error:", err);
+                const statusText = document.getElementById('status-text');
+                statusText.innerHTML = `<span style="color:#f43f5e; font-weight:800">BOOT ERROR</span><br><span style="text-transform:none; font-size:10px; color:#94a3b8">${err.message}</span>`;
+            }
+        }
+
+        window.addEventListener('load', init);
+    </script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
