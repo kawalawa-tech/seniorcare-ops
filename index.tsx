@@ -2,12 +2,11 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 
-/**
- * 1. 立即標記啟動
- * 這必須在所有非必要的 import 之前或第一行執行，
- * 以確保 index.html 的超時監控器能及時停止。
- */
+// 標記系統已成功進入 JS 執行階段
 (window as any)._OPS_CENTRE_STARTED = true;
+if ((window as any)._OPS_CENTRE_WATCHDOG) {
+  clearTimeout((window as any)._OPS_CENTRE_WATCHDOG);
+}
 
 const bootstrap = () => {
   const container = document.getElementById('root');
@@ -20,23 +19,22 @@ const bootstrap = () => {
         <App />
       </React.StrictMode>
     );
-    console.log("OpsCentre: UI Engine Mounted Successfully.");
+    console.log("OpsCentre: React Engine Online.");
   } catch (err) {
-    console.error("Critical Render Error:", err);
+    console.error("Critical Bootstrap Error:", err);
     container.innerHTML = `
-      <div style="padding:40px; text-align:center; font-family:sans-serif; background:#fff; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-        <div style="width:64px; height:64px; background:#fff1f2; border-radius:20px; display:flex; align-items:center; justify-content:center; margin-bottom:20px;">
-          <span style="font-size:32px;">⚠️</span>
+      <div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center; background:#f8fafc; font-family:sans-serif;">
+        <div style="background:white; padding:40px; border-radius:32px; shadow:0 20px 50px rgba(0,0,0,0.05); border:1px solid #e2e8f0;">
+          <h2 style="color:#1e293b; margin-bottom:10px;">渲染引擎啟動失敗</h2>
+          <p style="color:#64748b; font-size:13px; line-height:1.6;">這可能是由於瀏覽器版本過舊或模組加載衝突。建議使用最新版 Chrome 瀏覽器。</p>
+          <pre style="background:#f1f5f9; padding:15px; border-radius:12px; font-size:10px; color:#ef4444; margin-top:20px; text-align:left; overflow:auto;">${err instanceof Error ? err.stack : 'Unknown System Error'}</pre>
+          <button onclick="location.reload()" style="margin-top:30px; padding:12px 30px; background:#f97316; color:white; border-radius:16px; border:none; font-weight:bold; cursor:pointer;">重試啟動</button>
         </div>
-        <h2 style="color:#1e293b; font-weight:900; margin-bottom:8px;">啟動引擎發生故障</h2>
-        <p style="color:#64748b; font-size:12px; margin-top:10px; max-width:300px; line-height:1.6;">${err instanceof Error ? err.message : '未知錯誤，請檢查瀏覽器控制台。'}</p>
-        <button onclick="location.reload()" style="margin-top:32px; padding:12px 32px; background:#f97316; color:white; border-radius:16px; border:none; font-weight:800; cursor:pointer; box-shadow:0 10px 20px rgba(249,115,22,0.2);">重新載入系統</button>
       </div>
     `;
   }
 };
 
-// 確保 DOM 載入後執行
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', bootstrap);
 } else {

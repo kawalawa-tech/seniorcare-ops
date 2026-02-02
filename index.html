@@ -11,7 +11,7 @@
         window.process = { env: { API_KEY: "" } };
         window.global = window;
         
-        // 2. 啟動監控 (Watchdog) - 預留 12 秒緩衝時間
+        // 2. 啟動監控 (Watchdog)
         window._OPS_CENTRE_WATCHDOG = setTimeout(() => {
             if (!window._OPS_CENTRE_STARTED) {
                 const statusText = document.getElementById('status-text');
@@ -19,13 +19,13 @@
                     statusText.innerHTML = 
                         '<span style="color:#f97316; font-size: 14px; font-weight: 800;">系統啟動超時</span><br>' +
                         '<p style="color:#94a3b8; font-size: 10px; margin-top: 8px; text-transform: none; line-height: 1.4;">' +
-                        '偵測到資源載入緩慢，請檢查網絡連線。<br>' +
-                        '若您正在使用 Google Sites，請確保已將此 App 部署至 GitHub Pages。<br>' +
+                        '正在從 CDN 獲取資源，請稍候...<br>' +
+                        '若長時間停留在此畫面，請檢查 GitHub Actions 是否構建成功。<br>' +
                         '或嘗試重新整理頁面。' +
                         '</p>';
                 }
             }
-        }, 12000);
+        }, 15000);
     </script>
     <style>
         :root { --brand-orange: #f97316; }
@@ -40,7 +40,6 @@
         }
         #root { height: 100%; width: 100%; }
         
-        /* 自定義滑動條隱藏工具 (用於看板 View) */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -53,7 +52,7 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
     </style>
-    <!-- 核心資源導入地圖：統一版本號至 19.0.0，移除衝突項目 -->
+    <!-- 重要：嚴格統一版本號，防止 Multiple React Instances 錯誤 -->
     <script type="importmap">
 {
   "imports": {
@@ -68,7 +67,8 @@
   }
 }
 </script>
-    <script type="module" src="./index.tsx" onerror="document.getElementById('status-text').innerText='Module Load Error: index.tsx'"></script>
+    <!-- 使用相對路徑 ./ 確保在 GitHub 子目錄下能正確加載 -->
+    <script type="module" src="./index.tsx" onerror="document.getElementById('status-text').innerText='加載失敗: index.tsx'"></script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
@@ -77,7 +77,7 @@
             <div class="loader"></div>
             <p id="status-text" style="font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.15em; text-transform: uppercase;">
                 SeniorCare OpsCentre<br>
-                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Initializing Core Services...</span>
+                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Initializing UI Engine...</span>
             </p>
         </div>
     </div>
