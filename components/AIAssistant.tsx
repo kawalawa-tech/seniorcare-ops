@@ -1,8 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { ICONS } from '../constants';
-import { getGeminiResponse } from '../services/gemini';
-import { TaskCategory, TaskPriority, RecurringFrequency } from '../types';
+import { ICONS } from '../constants.tsx';
+import { getGeminiResponse } from '../services/gemini.ts';
+import { TaskCategory, TaskPriority, RecurringFrequency } from '../types.ts';
 
 interface AIAssistantProps {
   onAddTask: (task: any) => void;

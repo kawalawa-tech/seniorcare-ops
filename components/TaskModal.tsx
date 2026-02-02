@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
-import { Task, TaskStatus, TaskPriority, TaskCategory, RecurringFrequency, LOCATIONS, ASSIGNEES } from '../types';
-import { ICONS } from '../constants';
-import { getGeminiResponse } from '../services/gemini';
+import { Task, TaskStatus, TaskPriority, TaskCategory, RecurringFrequency, LOCATIONS, ASSIGNEES } from '../types.ts';
+import { ICONS } from '../constants.tsx';
+import { getGeminiResponse } from '../services/gemini.ts';
 
 interface TaskModalProps {
   isOpen: boolean;

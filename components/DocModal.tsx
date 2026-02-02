@@ -1,7 +1,6 @@
-
 import React from 'react';
-import { ImportantDocument } from '../types';
-import { ICONS } from '../constants';
+import { ImportantDocument } from '../types.ts';
+import { ICONS } from '../constants.tsx';
 
 interface DocModalProps {
   isOpen: boolean;

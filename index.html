@@ -7,29 +7,31 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     
-    <!-- Babel 運行時轉譯器：核心修正 -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Babel 運行時轉譯器 -->
+    <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
     
     <script>
         // 初始化環境變數
         window.process = { env: { API_KEY: "" } };
         window.global = window;
         
+        // 標記啟動旗標
+        window._OPS_CENTRE_STARTED = false;
+
         // 啟動監控計時器
         window._OPS_CENTRE_WATCHDOG = setTimeout(() => {
             if (!window._OPS_CENTRE_STARTED) {
                 const statusText = document.getElementById('status-text');
                 if (statusText) {
                     statusText.innerHTML = 
-                        '<span style="color:#f97316; font-size: 14px; font-weight: 800;">系統啟動超時</span><br>' +
+                        '<span style="color:#f97316; font-size: 14px; font-weight: 800;">系統加載中...</span><br>' +
                         '<p style="color:#94a3b8; font-size: 10px; margin-top: 8px; text-transform: none; line-height: 1.4;">' +
-                        '正在獲取雲端資源，請稍候...<br>' +
-                        '若持續出現此訊息，請檢查 GitHub Action 是否已成功部署。<br>' +
-                        '建議按 Ctrl + F5 強制重新整理頁面。' +
+                        '正在獲取雲端模組，初次啟動約需 5-10 秒。<br>' +
+                        '若持續無反應，請按 <b>Ctrl + F5</b> 強制刷新。<br>' +
                         '</p>';
                 }
             }
-        }, 15000);
+        }, 12000);
     </script>
 
     <style>
@@ -41,25 +43,25 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 
-    <!-- 優化後的 Import Map -->
+    <!-- 統一 React 18.3.1，移除所有衝突的 19.x 引用 -->
     <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react": "https://esm.sh/react@18.3.1",
+    "react-dom": "https://esm.sh/react-dom@18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
     "@google/genai": "https://esm.sh/@google/genai@1.39.0",
-    "lucide-react": "https://esm.sh/lucide-react@0.300.0?external=react",
-    "recharts": "https://esm.sh/recharts@2.10.3?external=react",
+    "lucide-react": "https://esm.sh/lucide-react@0.468.0?deps=react@18.3.1",
+    "recharts": "https://esm.sh/recharts@2.13.0?deps=react@18.3.1",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
 </script>
 
-    <!-- 配置 Babel 並加載入口文件 -->
+    <!-- 配置 Babel 並在成功轉譯後清除 Watchdog -->
     <script type="text/babel" data-type="module">
-        // 確保在加載任何模組前標記啟動，防止 Watchdog 觸發
         window._OPS_CENTRE_STARTED = true;
         if (window._OPS_CENTRE_WATCHDOG) clearTimeout(window._OPS_CENTRE_WATCHDOG);
     </script>
@@ -72,7 +74,7 @@
             <div class="loader"></div>
             <p id="status-text" style="font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.15em; text-transform: uppercase;">
                 SeniorCare OpsCentre<br>
-                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Dashboard Engine Online</span>
+                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Compiling Runtime Engine...</span>
             </p>
         </div>
     </div>

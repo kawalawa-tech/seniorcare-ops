@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
-import { OperationalNote } from '../types';
-import { ICONS } from '../constants';
+import { OperationalNote } from '../types.ts';
+import { ICONS } from '../constants.tsx';
 
 interface NotesViewProps {
   notes: OperationalNote[];

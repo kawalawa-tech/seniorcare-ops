@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Task, TaskStatus, LOCATIONS, TaskCategory } from '../types';
+import { Task, TaskStatus, LOCATIONS, TaskCategory } from '../types.ts';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell

@@ -1,7 +1,6 @@
-
 import React, { useRef } from 'react';
-import { ViewType, SyncSettings } from '../types';
-import { ICONS } from '../constants';
+import { ViewType, SyncSettings } from '../types.ts';
+import { ICONS } from '../constants.tsx';
 
 interface SidebarProps {
   activeView: ViewType;

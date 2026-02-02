@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Task, RecurringFrequency } from '../types';
+import { Task, RecurringFrequency } from '../types.ts';
 
 interface CalendarViewProps {
   tasks: Task[];
