@@ -6,10 +6,16 @@
     <title>善頤護老 - OpsCentre</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Babel 運行時轉譯器：核心修正 -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <script>
+        // 初始化環境變數
         window.process = { env: { API_KEY: "" } };
         window.global = window;
         
+        // 啟動監控計時器
         window._OPS_CENTRE_WATCHDOG = setTimeout(() => {
             if (!window._OPS_CENTRE_STARTED) {
                 const statusText = document.getElementById('status-text');
@@ -17,39 +23,47 @@
                     statusText.innerHTML = 
                         '<span style="color:#f97316; font-size: 14px; font-weight: 800;">系統啟動超時</span><br>' +
                         '<p style="color:#94a3b8; font-size: 10px; margin-top: 8px; text-transform: none; line-height: 1.4;">' +
-                        '偵測到模組加載延遲，請檢查網路連線。<br>' +
-                        '若您是手動上傳檔案，請確保 index.html 已包含正確的副檔名路徑。<br>' +
-                        '建議嘗試重新整理頁面。' +
+                        '正在獲取雲端資源，請稍候...<br>' +
+                        '若持續出現此訊息，請檢查 GitHub Action 是否已成功部署。<br>' +
+                        '建議按 Ctrl + F5 強制重新整理頁面。' +
                         '</p>';
                 }
             }
         }, 15000);
     </script>
+
     <style>
         :root { --brand-orange: #f97316; }
         html, body { height: 100vh; width: 100vw; margin: 0; padding: 0; overflow: hidden; background-color: #f8fafc; font-family: 'Noto Sans TC', 'Inter', sans-serif; }
         #root { height: 100%; width: 100%; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1.5rem; text-align: center; }
         .loader { width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top: 3px solid var(--brand-orange); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
+
+    <!-- 優化後的 Import Map -->
     <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@19.0.0",
-        "react/": "https://esm.sh/react@19.0.0/",
-        "react-dom": "https://esm.sh/react-dom@19.0.0",
-        "react-dom/": "https://esm.sh/react-dom@19.0.0/",
-        "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-        "@google/genai": "https://esm.sh/@google/genai@1.39.0",
-        "lucide-react": "https://esm.sh/lucide-react@0.468.0?deps=react@19.0.0",
-        "recharts": "https://esm.sh/recharts@2.13.0?deps=react@19.0.0"
-      }
-    }
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.39.0",
+    "lucide-react": "https://esm.sh/lucide-react@0.300.0?external=react",
+    "recharts": "https://esm.sh/recharts@2.10.3?external=react",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
+
+    <!-- 配置 Babel 並加載入口文件 -->
+    <script type="text/babel" data-type="module">
+        // 確保在加載任何模組前標記啟動，防止 Watchdog 觸發
+        window._OPS_CENTRE_STARTED = true;
+        if (window._OPS_CENTRE_WATCHDOG) clearTimeout(window._OPS_CENTRE_WATCHDOG);
     </script>
-    <script type="module" src="./index.tsx"></script>
+    <script type="text/babel" data-type="module" src="./index.tsx"></script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
@@ -58,7 +72,7 @@
             <div class="loader"></div>
             <p id="status-text" style="font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.15em; text-transform: uppercase;">
                 SeniorCare OpsCentre<br>
-                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Initializing Runtime...</span>
+                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Dashboard Engine Online</span>
             </p>
         </div>
     </div>
