@@ -11,7 +11,7 @@
         window.process = { env: { API_KEY: "" } };
         window.global = window;
         
-        // 2. 啟動監控 (Watchdog)
+        // 2. 啟動監控 (Watchdog) - 設置為 15 秒
         window._OPS_CENTRE_WATCHDOG = setTimeout(() => {
             if (!window._OPS_CENTRE_STARTED) {
                 const statusText = document.getElementById('status-text');
@@ -19,9 +19,9 @@
                     statusText.innerHTML = 
                         '<span style="color:#f97316; font-size: 14px; font-weight: 800;">系統啟動超時</span><br>' +
                         '<p style="color:#94a3b8; font-size: 10px; margin-top: 8px; text-transform: none; line-height: 1.4;">' +
-                        '正在從 CDN 獲取資源，請稍候...<br>' +
-                        '若長時間停留在此畫面，請檢查 GitHub Actions 是否構建成功。<br>' +
-                        '或嘗試重新整理頁面。' +
+                        '正在獲取雲端資源，請稍候...<br>' +
+                        '若持續出現此訊息，請檢查 GitHub Action 是否已成功部署。<br>' +
+                        '或嘗試清除瀏覽器快取。' +
                         '</p>';
                 }
             }
@@ -52,7 +52,7 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
     </style>
-    <!-- 重要：嚴格統一版本號，防止 Multiple React Instances 錯誤 -->
+    <!-- 修正後的 Import Map: 嚴格統一版本並使用 external 模式 -->
     <script type="importmap">
 {
   "imports": {
@@ -60,15 +60,14 @@
     "react-dom": "https://esm.sh/react-dom@19.0.0",
     "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
     "@google/genai": "https://esm.sh/@google/genai@1.39.0",
-    "lucide-react": "https://esm.sh/lucide-react@0.468.0",
-    "recharts": "https://esm.sh/recharts@2.13.0",
+    "lucide-react": "https://esm.sh/lucide-react@0.468.0?external=react",
+    "recharts": "https://esm.sh/recharts@2.13.0?external=react",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
 </script>
-    <!-- 使用相對路徑 ./ 確保在 GitHub 子目錄下能正確加載 -->
-    <script type="module" src="./index.tsx" onerror="document.getElementById('status-text').innerText='加載失敗: index.tsx'"></script>
+    <script type="module" src="./index.tsx" onerror="document.getElementById('status-text').innerText='載入 index.tsx 失敗，請檢查檔案路徑'"></script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
@@ -77,7 +76,7 @@
             <div class="loader"></div>
             <p id="status-text" style="font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.15em; text-transform: uppercase;">
                 SeniorCare OpsCentre<br>
-                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Initializing UI Engine...</span>
+                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Loading Dashboard Engine...</span>
             </p>
         </div>
     </div>
