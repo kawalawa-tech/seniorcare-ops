@@ -24,14 +24,15 @@
                 const statusText = document.getElementById('status-text');
                 if (statusText) {
                     statusText.innerHTML = 
-                        '<span style="color:#f97316; font-size: 14px; font-weight: 800;">系統加載中...</span><br>' +
-                        '<p style="color:#94a3b8; font-size: 10px; margin-top: 8px; text-transform: none; line-height: 1.4;">' +
-                        '正在獲取雲端模組，初次啟動約需 5-10 秒。<br>' +
-                        '若持續無反應，請按 <b>Ctrl + F5</b> 強制刷新。<br>' +
+                        '<span style="color:#ef4444; font-size: 16px; font-weight: 800;">系統啟動超時</span><br>' +
+                        '<p style="color:#94a3b8; font-size: 11px; margin-top: 10px; text-transform: none; line-height: 1.6;">' +
+                        '正在獲取雲端資源，請稍候...<br>' +
+                        '若持續出現此訊息，請檢查網路連線或 GitHub Action 部署。<br>' +
+                        '建議按 <b>Ctrl + F5</b> 強制重新整理頁面。<br>' +
                         '</p>';
                 }
             }
-        }, 12000);
+        }, 15000);
     </script>
 
     <style>
@@ -62,8 +63,7 @@
 
     <!-- 配置 Babel 並在成功轉譯後清除 Watchdog -->
     <script type="text/babel" data-type="module">
-        window._OPS_CENTRE_STARTED = true;
-        if (window._OPS_CENTRE_WATCHDOG) clearTimeout(window._OPS_CENTRE_WATCHDOG);
+        console.log("SeniorCare OpsCentre: Runtime Initializing...");
     </script>
     <script type="text/babel" data-type="module" src="./index.tsx"></script>
 <link rel="stylesheet" href="/index.css">
