@@ -10,17 +10,61 @@
     <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
     
     <script>
+        // Tailwind Configuration for SeniorCare Brand
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                brand: {
+                  orange: '#f97316',
+                  blue: '#005ca8',
+                  green: '#88bc4c',
+                  slate: '#1e293b',
+                  surface: '#f8fafc'
+                }
+              }
+            }
+          }
+        }
+        
         window.process = { env: { API_KEY: "" } };
         window.global = window;
     </script>
 
     <style>
-        :root { --brand-orange: #f97316; }
+        :root { 
+            --brand-orange: #f97316; 
+            --brand-blue: #005ca8;
+            --brand-green: #88bc4c;
+            --brand-slate: #1e293b;
+        }
+        
         html, body { height: 100vh; width: 100vw; margin: 0; padding: 0; overflow: hidden; background-color: #f8fafc; font-family: 'Noto Sans TC', 'Inter', sans-serif; }
         #root { height: 100%; width: 100%; }
+        
+        /* Brand Utility Classes */
+        .brand-orange-bg { background-color: var(--brand-orange); }
+        .brand-orange-text { color: var(--brand-orange); }
+        .brand-blue-bg { background-color: var(--brand-blue); }
+        .brand-blue-text { color: var(--brand-blue); }
+        .brand-green-bg { background-color: var(--brand-green); }
+        .brand-green-text { color: var(--brand-green); }
+        .brand-slate-bg { background-color: var(--brand-slate); }
+        .brand-slate-text { color: var(--brand-slate); }
+
+        /* Loader */
         .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1.5rem; text-align: center; }
         .loader { width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top: 3px solid var(--brand-orange); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Scrollbars */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 
     <script type="importmap">
@@ -46,7 +90,7 @@
             <div class="loader"></div>
             <p id="status-text" style="font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.15em; text-transform: uppercase;">
                 SeniorCare OpsCentre<br>
-                <span id="loading-subtext" style="font-weight: 400; opacity: 0.6; font-size: 9px;">Bootstrapping Digital Facility...</span>
+                <span id="loading-subtext" style="font-weight: 400; opacity: 0.6; font-size: 9px;">Assembling Operations...</span>
             </p>
         </div>
     </div>
@@ -55,57 +99,68 @@
         const rawSources = {};
         const blobUrls = {};
 
-        // 1. 路徑標準化工具 (處理 ./ 和 ../)
+        // Robust Path Resolver
         function resolvePath(basePath, relPath) {
-            // 如果不是相對路徑，直接回傳
             if (!relPath.startsWith('.')) return relPath;
             
-            const baseParts = basePath.split('/').slice(0, -1);
-            const relParts = relPath.replace(/\.(tsx?)$/, '').split('/');
+            // Remove optional extension from relPath for easier matching
+            const cleanRelPath = relPath.replace(/\.(tsx?)$/, '');
             
+            const baseParts = basePath.split('/').slice(0, -1);
+            const relParts = cleanRelPath.split('/');
+            
+            const finalParts = [...baseParts];
             for (const part of relParts) {
-                if (part === '..') baseParts.pop();
-                else if (part !== '.') baseParts.push(part);
+                if (part === '..') finalParts.pop();
+                else if (part !== '.') finalParts.push(part);
             }
             
-            const finalPath = baseParts.join('/');
-            // 嘗試匹配 .ts 或 .tsx
+            const finalPath = finalParts.join('/');
+            // Check for potential source file matches
             if (rawSources[finalPath + '.tsx']) return finalPath + '.tsx';
             if (rawSources[finalPath + '.ts']) return finalPath + '.ts';
+            if (rawSources[finalPath]) return finalPath; // Case where file is registered without extension
+            
             return finalPath;
         }
 
-        // 2. 遞歸編譯器
+        // Recursive Module Compiler
         async function compileFile(filePath) {
             if (blobUrls[filePath]) return blobUrls[filePath];
             
             let content = rawSources[filePath];
-            if (!content) throw new Error(`Missing source for ${filePath}`);
+            if (!content) throw new Error(`Missing source for "${filePath}"`);
 
-            // 尋找所有 import 並遞歸處理
-            const importRegex = /from\s+['"](\.\/|\.\.\/)([^'"]+)['"]/g;
+            // Improved regex to find all import/export from statements
+            const importRegex = /(from|import)\s+['"](\.\.?\/[^'"]+)['"]/g;
             const matches = [...content.matchAll(importRegex)];
             
+            // Compile dependencies first
             for (const match of matches) {
-                const relPath = match[1] + match[2];
+                const relPath = match[2];
                 const absPath = resolvePath(filePath, relPath);
                 
                 if (rawSources[absPath]) {
                     const childBlobUrl = await compileFile(absPath);
-                    content = content.replace(match[0], `from "${childBlobUrl}"`);
+                    // Global replacement for this specific import path
+                    content = content.split(match[0]).join(`${match[1]} "${childBlobUrl}"`);
                 }
             }
 
-            // 使用 Babel 轉換
-            const transformed = Babel.transform(content, {
-                presets: ['react', 'typescript'],
-                filename: filePath
-            }).code;
+            try {
+                const transformed = Babel.transform(content, {
+                    presets: ['react', 'typescript'],
+                    filename: filePath
+                }).code;
 
-            const blob = new Blob([transformed], { type: 'application/javascript' });
-            const url = URL.createObjectURL(blob);
-            blobUrls[filePath] = url;
-            return url;
+                const blob = new Blob([transformed], { type: 'application/javascript' });
+                const url = URL.createObjectURL(blob);
+                blobUrls[filePath] = url;
+                return url;
+            } catch (babelErr) {
+                console.error(`Babel Error in ${filePath}:`, babelErr);
+                throw babelErr;
+            }
         }
 
         async function init() {
@@ -120,30 +175,27 @@
             ];
 
             try {
-                // 第一階段：全部抓取
-                subtext.innerText = "Fetching Resources...";
+                subtext.innerText = "Connecting to Facility...";
                 await Promise.all(filesToFetch.map(async (f) => {
                     const r = await fetch(f);
                     if (!r.ok) throw new Error(`Fetch failed for ${f}`);
                     rawSources[f] = await r.text();
                 }));
 
-                // 第二階段：遞歸編譯
-                subtext.innerText = "Compiling Modules...";
+                subtext.innerText = "Synchronizing Components...";
                 const entryPointUrl = await compileFile('index.tsx');
 
-                // 第三階段：啟動
-                subtext.innerText = "Launching...";
+                subtext.innerText = "Welcome Back.";
                 const script = document.createElement('script');
                 script.type = 'module';
                 script.src = entryPointUrl;
                 document.head.appendChild(script);
 
-                console.log("OpsCentre: Boot successful.");
+                console.log("OpsCentre: Boot Successful.");
             } catch (err) {
-                console.error("OpsCentre Boot Error:", err);
+                console.error("OpsCentre Critical Boot Failure:", err);
                 const statusText = document.getElementById('status-text');
-                statusText.innerHTML = `<span style="color:#f43f5e; font-weight:800">BOOT ERROR</span><br><span style="text-transform:none; font-size:10px; color:#94a3b8">${err.message}</span>`;
+                statusText.innerHTML = `<span style="color:#f43f5e; font-weight:800">SYSTEM HALTED</span><br><span style="text-transform:none; font-size:10px; color:#94a3b8; font-weight:400">${err.message}</span>`;
             }
         }
 

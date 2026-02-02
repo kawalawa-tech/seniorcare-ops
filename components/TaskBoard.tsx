@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Task, TaskStatus, TaskPriority, TaskCategory, RecurringFrequency, LOCATIONS, ASSIGNEES } from '../types.ts';
-import { ICONS, STATUS_COLORS, PRIORITY_COLORS, BRAND_COLORS, LOCATION_STYLE } from '../constants.tsx';
+import { ICONS, STATUS_COLORS, PRIORITY_COLORS, LOCATION_STYLE } from '../constants.tsx';
 import TaskModal from './TaskModal.tsx';
 
 interface TaskBoardProps {
@@ -31,7 +31,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onUpdateTask, onAddTask, o
       <div className="flex items-center gap-4 text-xs text-slate-500 mb-4">
         <div className="flex -space-x-2.5">
           {task.assignees.map((a, i) => (
-            <div key={i} title={a} className="w-8 h-8 rounded-full brand-blue-bg border-2 border-white flex items-center justify-center text-[10px] text-white font-bold uppercase shadow-sm">
+            <div key={i} title={a} className="w-8 h-8 rounded-full brand-blue-bg border-2 border-white flex items-center justify-center text-[10px] text-white font-bold uppercase shadow-md">
               {a[0]}
             </div>
           ))}
@@ -67,7 +67,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onUpdateTask, onAddTask, o
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h2 className="text-3xl font-extrabold brand-blue-text tracking-tight uppercase">營運管理看板</h2>
+          <h2 className="text-3xl font-extrabold text-brand-slate tracking-tight uppercase">營運管理看板</h2>
           <p className="text-slate-500 font-medium">各院舍即時事項進度與人力分配</p>
         </div>
         <button 
@@ -101,9 +101,13 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onUpdateTask, onAddTask, o
               const isOverdue = task.status !== TaskStatus.COMPLETED && task.deadline < today;
 
               return (
-                <tr key={task.id} className={`group hover:bg-[#fcfdfa] transition-colors ${isOverdue ? 'bg-red-50/30' : ''}`}>
+                <tr 
+                  key={task.id} 
+                  onClick={() => setModalState({ isOpen: true, task })}
+                  className={`group hover:bg-[#fcfdfa] cursor-pointer transition-colors ${isOverdue ? 'bg-red-50/30' : ''}`}
+                >
                   <td className="px-8 py-6">
-                    <span className={`text-xs font-black px-3 py-1 rounded-full uppercase tracking-tighter border ${LOCATION_STYLE[task.location] || 'bg-slate-50 text-slate-500'}`}>
+                    <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter border ${LOCATION_STYLE[task.location] || 'bg-slate-50 text-slate-500'}`}>
                       {task.location}
                     </span>
                   </td>
@@ -116,7 +120,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onUpdateTask, onAddTask, o
                   <td className="px-8 py-6">
                     <div className="flex items-center -space-x-2.5">
                       {task.assignees.map((a, i) => (
-                        <div key={i} title={a} className="w-8 h-8 rounded-full brand-blue-bg border-2 border-white flex items-center justify-center text-[8px] text-white font-bold uppercase shadow-sm">
+                        <div key={i} title={a} className="w-8 h-8 rounded-full brand-blue-bg border-2 border-white flex items-center justify-center text-[9px] text-white font-black uppercase shadow-sm">
                           {a[0]}
                         </div>
                       ))}
@@ -131,7 +135,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onUpdateTask, onAddTask, o
                     <div className="flex flex-col">
                       <span className={`text-sm font-bold ${isOverdue ? 'text-red-600' : 'text-slate-700'}`}>{task.deadline}</span>
                       {task.recurring !== RecurringFrequency.NONE && (
-                        <span className="text-[10px] font-bold text-[#88bc4c] flex items-center gap-1 mt-1">
+                        <span className="text-[10px] font-bold text-brand-green flex items-center gap-1 mt-1">
                           <ICONS.Clock className="w-3 h-3" />
                           {task.recurring}
                         </span>

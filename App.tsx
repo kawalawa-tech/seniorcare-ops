@@ -222,18 +222,28 @@ const App: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-2xl font-black brand-slate-text">雲端儲存中心</h3>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Database Engine Configuration</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Database Engine Configuration</p>
                 </div>
               </div>
               <button onClick={() => setShowSyncModal(false)} className="w-10 h-10 flex items-center justify-center bg-slate-50 rounded-full text-slate-400 hover:text-rose-500 transition-colors">×</button>
             </div>
             
             <div className="space-y-6">
+              <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <ICONS.Link className="w-4 h-4 text-blue-500" />
+                  <span className="text-xs font-black text-blue-700 uppercase tracking-tight">如何取得 ID？</span>
+                </div>
+                <p className="text-[11px] text-blue-600 leading-relaxed font-medium">
+                  前往 <a href="https://gist.github.com" target="_blank" className="underline font-black">GitHub Gist</a> 建立新文件，複製網址最後一串英數 ID，或直接將整個網址貼在下方。
+                </p>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Gist 網址或 ID</label>
                 <input 
                   type="text" 
-                  placeholder="貼入現有的 Gist 網址" 
+                  placeholder="貼入 Gist 網址 (如 https://gist.github.com/...)" 
                   className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-slate-900 font-bold text-sm"
                   value={syncSettings.gistId}
                   onChange={(e) => setSyncSettings(prev => ({ ...prev, gistId: e.target.value }))}
