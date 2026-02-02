@@ -25,11 +25,12 @@
                 const statusText = document.getElementById('status-text');
                 if (statusText) {
                     statusText.innerHTML = 
-                        '<span style="color:#ef4444; font-size: 16px; font-weight: 800;">系統啟動超時</span><br>' +
+                        '<span style="color:#ef4444; font-size: 16px; font-weight: 800;">系統啟動失敗</span><br>' +
                         '<p style="color:#94a3b8; font-size: 11px; margin-top: 10px; text-transform: none; line-height: 1.6;">' +
-                        '偵測到版本衝突或網路延遲。<br>' +
-                        '正在嘗試重新載入模組引擎...<br>' +
-                        '請按 <b>Ctrl + F5</b> 強制刷新頁面。<br>' +
+                        '偵測到代碼編譯錯誤或資源載入異常。<br>' +
+                        '這通常是由於模組版本衝突 (React #31) 或 TypeScript 解析失敗引起。<br>' +
+                        '請檢查瀏覽器控制台 (F12) 獲取具體報錯內容。<br>' +
+                        '建議按 <b>Ctrl + F5</b> 強制刷新。<br>' +
                         '</p>';
                 }
             }
@@ -48,7 +49,7 @@
         .brand-slate-text { color: #1e293b; }
     </style>
 
-    <!-- 絕對嚴格的 Import Map：移除所有 React 19 引用 -->
+    <!-- 修正：嚴格鎖定 18.2.0，徹底移除任何指向 React 19 的映射 -->
     <script type="importmap">
     {
       "imports": {
@@ -56,21 +57,17 @@
         "react-dom": "https://esm.sh/react-dom@18.2.0",
         "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
         "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
-        "@google/genai": "https://esm.sh/@google/genai@1.39.0",
         "lucide-react": "https://esm.sh/lucide-react@0.468.0?deps=react@18.2.0",
         "recharts": "https://esm.sh/recharts@2.13.0?deps=react@18.2.0",
+        "@google/genai": "https://esm.sh/@google/genai@1.39.0",
         "react/": "https://esm.sh/react@18.2.0/",
         "react-dom/": "https://esm.sh/react-dom@18.2.0/"
       }
     }
     </script>
 
-    <script type="text/babel" data-type="module">
-        import React from 'react';
-        window.React = React;
-        console.log("SeniorCare OpsCentre: React 18.2.0 environment locked.");
-    </script>
-    <script type="text/babel" data-type="module" src="./index.tsx"></script>
+    <!-- 設置 Babel 以支持 TypeScript 和 React -->
+    <script type="text/babel" data-type="module" data-presets="react,typescript" src="index.tsx"></script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
@@ -79,7 +76,7 @@
             <div class="loader"></div>
             <p id="status-text" style="font-size: 11px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.15em; text-transform: uppercase;">
                 SeniorCare OpsCentre<br>
-                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Compiling Runtime Engine...</span>
+                <span style="font-weight: 400; opacity: 0.6; font-size: 9px;">Initializing Runtime...</span>
             </p>
         </div>
     </div>

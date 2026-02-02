@@ -6,10 +6,8 @@ Your context includes the "Residential Care Homes (Elderly Persons) Ordinance" (
 `;
 
 export const getGeminiResponse = async (prompt: string, mode: 'chat' | 'extract' | 'summary' = 'chat') => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) return mode === 'extract' ? "{}" : "系統尚未設定 API Key，請先於設定中配置。";
-
-  const ai = new GoogleGenAI({ apiKey });
+  // Fix: Directly initialize GoogleGenAI with API key from process.env.API_KEY as per guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const config: any = {
     systemInstruction: SYSTEM_INSTRUCTION,
@@ -18,6 +16,7 @@ export const getGeminiResponse = async (prompt: string, mode: 'chat' | 'extract'
   };
 
   if (mode === 'extract') {
+    // Disable search tool for structured data extraction to allow JSON response mode
     delete config.tools; 
     config.responseMimeType = "application/json";
     config.responseSchema = {
@@ -42,7 +41,10 @@ export const getGeminiResponse = async (prompt: string, mode: 'chat' | 'extract'
       config,
     });
     
+    // Fix: Access text property directly (it is a property, not a method)
     let text = response.text || "";
+    
+    // Fix: Always extract and display website URLs from grounding chunks when using Google Search
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     if (chunks && chunks.length > 0) {
       const urls = chunks.map((c: any) => c.web?.uri).filter((u: string) => u);
@@ -54,6 +56,7 @@ export const getGeminiResponse = async (prompt: string, mode: 'chat' | 'extract'
     return text;
   } catch (error) {
     console.error("Gemini Error:", error);
+    // Return empty JSON object for extraction failures or fallback message for chat
     return mode === 'extract' ? "{}" : "抱歉，AI 助理目前無法回應。";
   }
 };
