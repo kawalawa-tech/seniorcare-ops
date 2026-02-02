@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>善頤護老 - OpsCentre</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     
@@ -15,25 +16,24 @@
         window.process = { env: { API_KEY: "" } };
         window.global = window;
         
-        // 標記啟動旗標
         window._OPS_CENTRE_STARTED = false;
 
         // 啟動監控計時器
         window._OPS_CENTRE_WATCHDOG = setTimeout(() => {
             if (!window._OPS_CENTRE_STARTED) {
-                console.error("OpsCentre: Startup Timeout detected.");
+                console.error("OpsCentre: Startup Timeout.");
                 const statusText = document.getElementById('status-text');
                 if (statusText) {
                     statusText.innerHTML = 
-                        '<span style="color:#ef4444; font-size: 16px; font-weight: 800;">系統啟動超時</span><br>' +
+                        '<span style="color:#ef4444; font-size: 16px; font-weight: 800;">系統啟動失敗</span><br>' +
                         '<p style="color:#94a3b8; font-size: 11px; margin-top: 10px; text-transform: none; line-height: 1.6;">' +
-                        '模組解析失敗或網路連線不穩。<br>' +
-                        '請檢查控制台 (F12) 是否有 404 或 Version Conflict 錯誤。<br>' +
-                        '建議按 <b>Ctrl + F5</b> 強制重新整理。<br>' +
+                        '模組版本衝突或網路連線不穩。<br>' +
+                        '請檢查控制台 (F12) 是否有無效的模組請求。<br>' +
+                        '建議按 <b>Ctrl + F5</b> 強制刷新。<br>' +
                         '</p>';
                 }
             }
-        }, 15000);
+        }, 10000);
     </script>
 
     <style>
@@ -43,9 +43,12 @@
         .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1.5rem; text-align: center; }
         .loader { width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top: 3px solid var(--brand-orange); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .brand-orange-text { color: var(--brand-orange); }
+        .brand-orange-bg { background-color: var(--brand-orange); }
+        .brand-slate-text { color: #1e293b; }
     </style>
 
-    <!-- 統一鎖定 React 18.3.1，移除所有 19.x 的「毒藥」映射 -->
+    <!-- 修正：統一鎖定 18.3.1，徹底移除 19.x 的映射 -->
     <script type="importmap">
     {
       "imports": {
@@ -62,9 +65,9 @@
     }
     </script>
 
-    <!-- 監控腳本加載 -->
+    <!-- 配置 Babel：使用 React 18 相容的自動模式 -->
     <script type="text/babel" data-type="module">
-        console.log("OpsCentre: Core Runtime Executing...");
+        console.log("SeniorCare OpsCentre: Runtime Initializing...");
     </script>
     <script type="text/babel" data-type="module" src="./index.tsx"></script>
 <link rel="stylesheet" href="/index.css">
