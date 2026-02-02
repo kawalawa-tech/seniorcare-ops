@@ -17,31 +17,43 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, task, onUpdateTa
 
   if (!isOpen) return null;
 
+  const cleanJsonString = (str: string) => {
+    return str.replace(/```json/g, "").replace(/```/g, "").trim();
+  };
+
   const handleAiFill = async () => {
     if (!aiInput.trim()) return;
     setIsAiLoading(true);
-    // 更新 Prompt 以獲得更佳輸出
-    const result = await getGeminiResponse(`請精準提取此營運文字細節並填入對應欄位，如果有指派人請從 Chris, Gavin, Jannel 中選擇：${aiInput}`, 'extract');
-    setIsAiLoading(false);
     
     try {
-      const data = JSON.parse(result);
+      const result = await getGeminiResponse(aiInput, 'extract');
+      const cleanedResult = cleanJsonString(result);
+      
+      if (!cleanedResult || cleanedResult === '{}') {
+        throw new Error("無法從文字中提取有效資訊");
+      }
+
+      const data = JSON.parse(cleanedResult);
       const form = document.querySelector('#task-form') as HTMLFormElement;
+      
       if (form && data) {
         // 基本文字欄位
         if (data.title) (form.elements.namedItem('title') as HTMLInputElement).value = data.title;
-        if (data.location) (form.elements.namedItem('location') as HTMLSelectElement).value = data.location;
+        if (data.location && LOCATIONS.includes(data.location)) {
+          (form.elements.namedItem('location') as HTMLSelectElement).value = data.location;
+        }
         if (data.deadline) (form.elements.namedItem('deadline') as HTMLInputElement).value = data.deadline;
         if (data.description) (form.elements.namedItem('description') as HTMLTextAreaElement).value = data.description;
         
-        // 枚舉欄位對齊
+        // 優先等級映射
         if (data.priority) {
-          const pMap: any = { '緊急': '緊急', '高': '緊急', '一般': '一般', '普通': '一般', '低': '低度' };
+          const pMap: any = { '緊急': '緊急', '高': '緊急', '一般': '一般', '普通': '一般', '低': '低度', '低度': '低度' };
           (form.elements.namedItem('priority') as HTMLSelectElement).value = pMap[data.priority] || '一般';
         }
         
+        // 類別映射
         if (data.category) {
-          const cMap: any = { '維修': '維修', '行政': '行政', 'HR': 'HR', '採購': '採購', '消防': '消防/安全', '安全': '消防/安全' };
+          const cMap: any = { '維修': '維修', '行政': '行政', 'HR': 'HR', '採購': '採購', '護理': '護理品質', '護理品質': '護理品質', '消防': '消防/安全', '安全': '消防/安全' };
           (form.elements.namedItem('category') as HTMLSelectElement).value = cMap[data.category] || '行政';
         }
 
@@ -53,14 +65,22 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, task, onUpdateTa
         if (data.assignees && Array.isArray(data.assignees)) {
             const checkboxes = form.querySelectorAll('input[name="assignees"]');
             checkboxes.forEach((cb: any) => {
-                cb.checked = data.assignees.some((a: string) => a.toLowerCase().includes(cb.value.toLowerCase()));
+                const isSelected = data.assignees.some((a: string) => 
+                  a.toLowerCase().includes(cb.value.toLowerCase()) || 
+                  cb.value.toLowerCase().includes(a.toLowerCase())
+                );
+                cb.checked = isSelected;
             });
         }
+        setAiInput('');
+      } else {
+        alert("AI 提取的內容不完整，請手動校對。");
       }
-      setAiInput('');
-    } catch (e) {
+    } catch (e: any) {
       console.error("AI parse error", e);
-      alert("AI 提取失敗，請嘗試手動輸入。");
+      alert(e.message === "無法從文字中提取有效資訊" ? e.message : "AI 提取失敗，可能是格式不正確。請嘗試更換描述方式。");
+    } finally {
+      setIsAiLoading(false);
     }
   };
 
@@ -98,8 +118,9 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, task, onUpdateTa
                   type="button"
                   onClick={handleAiFill}
                   disabled={isAiLoading}
-                  className="px-6 py-3 bg-brand-slate text-white text-sm font-black rounded-2xl hover:opacity-90 disabled:opacity-50 transition-all active:scale-95 shadow-md"
+                  className="px-6 py-3 bg-brand-slate text-white text-sm font-black rounded-2xl hover:opacity-90 disabled:opacity-50 transition-all active:scale-95 shadow-md flex items-center gap-2"
                 >
+                  {isAiLoading && <ICONS.Refresh className="w-4 h-4 animate-spin" />}
                   {isAiLoading ? '分析中...' : '自動填寫'}
                 </button>
               </div>

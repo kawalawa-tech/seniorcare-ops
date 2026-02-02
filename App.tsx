@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Task, 
@@ -84,10 +85,8 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string, type: 'task' | 'doc' | 'note' } | null>(null);
 
-  // 用於追蹤本地最後更新時間
   const localLastUpdated = useRef<string>(safeStorage.getItem('seniorcare_last_updated') || new Date().toISOString());
 
-  // 儲存數據並更新時間戳記
   const saveAndTouch = useCallback((type: 'tasks' | 'notes' | 'docs', data: any) => {
     const timestamp = new Date().toISOString();
     localLastUpdated.current = timestamp;
@@ -98,24 +97,42 @@ const App: React.FC = () => {
     if (type === 'docs') { setDocs(data); safeStorage.setItem('seniorcare_docs', JSON.stringify(data)); }
   }, []);
 
-  // 強大同步邏輯：先下載比對，再決定是否上傳
   const performSmartSync = useCallback(async (isAutoPull = false) => {
-    if (!syncSettings.isEnabled || !syncSettings.githubToken || !syncSettings.gistId) return;
+    const gid = sanitizeGistId(syncSettings.gistId);
+    
+    if (!syncSettings.isEnabled || !syncSettings.githubToken) return;
+
+    const isValidFormat = /^[a-f0-9]{20,32}$/i.test(gid);
+
+    if (!isValidFormat) {
+      if (!isAutoPull && gid) {
+        if (syncSettings.gistId.startsWith('ghp_')) {
+          alert("錯誤：您填入的是 Token 而非 Gist ID。請確保 Token 已正確填入，此欄位應填入 20-32 位代碼。");
+        } else {
+          alert("Gist ID 格式不正確。請輸入 20 或 32 位的字母數字編號。");
+        }
+        return;
+      }
+      if (isAutoPull || !gid) {
+        if (!isAutoPull) {
+            // 手動觸發且 gid 為空，代表想建立新 Gist
+        } else {
+            return; // 自動拉取但沒 ID 則直接返回
+        }
+      }
+    }
     
     setIsSyncing(true);
     setSyncStatusText(isAutoPull ? 'Checking...' : 'Syncing...');
 
     try {
-      // 1. 先嘗試獲取雲端最新數據
-      const cloudData = await fetchFromGitHub(syncSettings.githubToken, syncSettings.gistId);
+      const cloudData = gid && isValidFormat ? await fetchFromGitHub(syncSettings.githubToken, gid) : null;
       
       if (cloudData && cloudData.lastUpdated) {
         const cloudTime = new Date(cloudData.lastUpdated).getTime();
         const localTime = new Date(localLastUpdated.current).getTime();
 
-        // 2. 如果雲端比較新，則更新本地
         if (cloudTime > localTime) {
-          console.log("OpsCentre: Cloud data is newer. Updating local state...");
           if (cloudData.tasks) { setTasks(cloudData.tasks); safeStorage.setItem('seniorcare_tasks', JSON.stringify(cloudData.tasks)); }
           if (cloudData.notes) { setNotes(cloudData.notes); safeStorage.setItem('seniorcare_notes', JSON.stringify(cloudData.notes)); }
           if (cloudData.docs) { setDocs(cloudData.docs); safeStorage.setItem('seniorcare_docs', JSON.stringify(cloudData.docs)); }
@@ -124,11 +141,10 @@ const App: React.FC = () => {
           setSyncSettings(prev => ({ ...prev, lastSynced: new Date().toISOString() }));
           setIsSyncing(false);
           setSyncStatusText('Cloud Live');
-          return; // 完成同步
+          return;
         }
       }
 
-      // 3. 如果本地比較新 (或是手動觸發)，則將本地上傳至雲端
       if (!isAutoPull) {
         const dataToSync = { 
           tasks, 
@@ -136,13 +152,17 @@ const App: React.FC = () => {
           docs, 
           lastUpdated: localLastUpdated.current 
         };
-        const result = await syncToGitHub(syncSettings.githubToken, syncSettings.gistId, dataToSync);
+        const result = await syncToGitHub(syncSettings.githubToken, gid, dataToSync);
         if (result.success) {
-          setSyncSettings(prev => ({ 
-            ...prev, 
-            gistId: result.gistId || prev.gistId, 
-            lastSynced: new Date().toISOString() 
-          }));
+          const newGistId = result.gistId || gid;
+          setSyncSettings(prev => {
+            const next = { ...prev, gistId: newGistId, lastSynced: new Date().toISOString() };
+            safeStorage.setItem('seniorcare_sync_settings', JSON.stringify(next));
+            return next;
+          });
+          if (!isAutoPull) alert("同步成功！" + (gid ? "" : "\n系統已自動為您建立並填入新 Gist ID。"));
+        } else if (!isAutoPull) {
+          alert(result.message || "同步失敗");
         }
       }
     } catch (err) {
@@ -153,17 +173,16 @@ const App: React.FC = () => {
     setSyncStatusText('Cloud Live');
   }, [syncSettings, tasks, notes, docs]);
 
-  // 啟動時自動拉取
   useEffect(() => {
     const initSync = async () => {
-      if (syncSettings.isEnabled && syncSettings.gistId) {
+      const gid = sanitizeGistId(syncSettings.gistId);
+      if (syncSettings.isEnabled && /^[a-f0-9]{20,32}$/i.test(gid)) {
         await performSmartSync(true);
       }
     };
     initSync();
   }, []);
 
-  // 定時同步 (每 60 秒檢查一次)
   useEffect(() => {
     const interval = setInterval(() => {
       if (syncSettings.isEnabled) performSmartSync(true);
@@ -177,6 +196,11 @@ const App: React.FC = () => {
     const todayTasks = tasks.filter(t => t.status !== TaskStatus.COMPLETED && t.deadline === today);
     return { overdue: overdue.length, today: todayTasks.length };
   }, [tasks]);
+
+  const isGistIdValid = useMemo(() => {
+    const gid = sanitizeGistId(syncSettings.gistId);
+    return /^[a-f0-9]{20,32}$/i.test(gid);
+  }, [syncSettings.gistId]);
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-[#f8fafc]">
@@ -251,29 +275,47 @@ const App: React.FC = () => {
               <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
                 <div className="flex items-center gap-2 mb-2">
                   <ICONS.Warning className="w-4 h-4 text-blue-500" />
-                  <span className="text-xs font-black text-blue-700 uppercase tracking-tight">多裝置同步要領</span>
+                  <span className="text-xs font-black text-blue-700 uppercase tracking-tight">操作提示</span>
                 </div>
-                <p className="text-[11px] text-blue-600 leading-relaxed font-medium">
-                  請確保您的所有裝置 (電腦、手機) 都填入 **同一個** Gist ID 與 Token。系統會自動偵測並同步最新的異動。
-                </p>
+                <ul className="text-[11px] text-blue-600 leading-relaxed font-medium list-disc pl-4 space-y-1">
+                  <li><strong>建立新空間：</strong>將下方 Gist ID 留空，直接點擊「立即上傳」。</li>
+                  <li><strong>跨裝置同步：</strong>在其他裝置填入同一個 Token 與同一個 Gist ID。</li>
+                </ul>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Gist ID (多裝置需一致)</label>
-                <input 
-                  type="text" 
-                  placeholder="貼入 Gist 網址或 ID" 
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-slate-900 font-bold text-sm"
-                  value={syncSettings.gistId}
-                  onChange={(e) => setSyncSettings(prev => ({ ...prev, gistId: e.target.value }))}
-                  onBlur={(e) => setSyncSettings(prev => ({ ...prev, gistId: sanitizeGistId(e.target.value) }))}
-                />
+                <div className="flex justify-between items-end mb-2">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Gist ID (雲端編號)</label>
+                  <a href="https://gist.github.com" target="_blank" className="text-[9px] font-black text-brand-orange uppercase hover:underline">我的 Gists</a>
+                </div>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    placeholder="留空以建立新備份空間" 
+                    className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-slate-900 font-bold text-sm transition-all ${isGistIdValid ? 'border-emerald-300 bg-emerald-50/30 ring-emerald-100' : syncSettings.gistId.startsWith('ghp_') ? 'border-rose-300 bg-rose-50' : 'border-slate-200'}`}
+                    value={syncSettings.gistId}
+                    onChange={(e) => setSyncSettings(prev => ({ ...prev, gistId: e.target.value }))}
+                  />
+                  {isGistIdValid && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500 flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg border border-emerald-100 shadow-sm">
+                      <ICONS.Refresh className="w-3 h-3" />
+                      <span className="text-[9px] font-black uppercase">格式正確</span>
+                    </div>
+                  )}
+                </div>
+                {syncSettings.gistId.startsWith('ghp_') && (
+                  <p className="text-[10px] text-rose-500 font-bold mt-2 flex items-center gap-1">
+                    <ICONS.Warning className="w-3 h-3" />
+                    注意：這似乎是 Token 而非 ID。請將 Token 設定在程式內部。
+                  </p>
+                )}
+                <p className="text-[9px] text-slate-400 mt-2 font-medium">※ Gist ID 為 20 或 32 位的字母數字編號（例如 4f284f...）。</p>
               </div>
 
               <div className="flex items-center justify-between p-5 bg-slate-50 rounded-[1.5rem] border border-slate-100">
                 <div>
                   <p className="font-black text-sm text-slate-700">自動雲端備份</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Real-time Cloud Integration</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Real-time sync enabled</p>
                 </div>
                 <button onClick={() => setSyncSettings(prev => ({ ...prev, isEnabled: !prev.isEnabled }))} className={`w-14 h-8 rounded-full transition-all relative ${syncSettings.isEnabled ? 'bg-slate-900' : 'bg-slate-300'}`}>
                   <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${syncSettings.isEnabled ? 'left-7 shadow-lg' : 'left-1'}`} />
@@ -281,10 +323,10 @@ const App: React.FC = () => {
               </div>
 
               <div className="flex gap-4 pt-6 border-t border-slate-100">
-                <button onClick={() => performSmartSync(true)} disabled={isSyncing} className="flex-1 flex items-center justify-center gap-2 py-4 bg-slate-100 text-slate-600 font-black rounded-2xl hover:bg-slate-200 disabled:opacity-50 transition-all">
+                <button onClick={() => performSmartSync(true)} disabled={isSyncing} className={`flex-1 flex items-center justify-center gap-2 py-4 font-black rounded-2xl transition-all ${isGistIdValid ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                   <ICONS.Refresh className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /> 下載更新
                 </button>
-                <button onClick={() => performSmartSync(false)} disabled={isSyncing} className="flex-1 flex items-center justify-center gap-2 py-4 text-white font-black rounded-2xl shadow-xl bg-slate-900 shadow-slate-200 transition-all hover:opacity-90 active:scale-95 disabled:opacity-50">
+                <button onClick={() => performSmartSync(false)} disabled={isSyncing} className="flex-1 flex items-center justify-center gap-2 py-4 text-white font-black rounded-2xl shadow-xl bg-brand-orange shadow-orange-100 transition-all hover:opacity-90 active:scale-95 disabled:opacity-50">
                   <ICONS.Cloud className="w-4 h-4" /> 立即上傳
                 </button>
               </div>

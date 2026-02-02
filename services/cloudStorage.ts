@@ -9,6 +9,11 @@ export const sanitizeGistId = (id: string) => {
   if (!id) return '';
   const trimmed = id.trim();
   
+  // 安全檢查：如果使用者誤填了 GitHub Token (ghp_ 開頭)，則視為無效 ID 並回傳空值
+  if (trimmed.startsWith('ghp_')) {
+    return '';
+  }
+
   // 1. 匹配標準 Gist 網址: gist.github.com/username/ID
   const urlMatch = trimmed.match(/gist\.github\.com\/[^/]+\/([a-f0-9]{20,32})/i);
   if (urlMatch) return urlMatch[1];
@@ -23,8 +28,8 @@ export const sanitizeGistId = (id: string) => {
     if (/^[a-f0-9]{20,32}$/i.test(last)) return last;
   }
   
-  // 4. 如果都不匹配，回傳原始字串（後續由 syncToGitHub 判斷是否為無效格式並轉為新建模式）
-  return trimmed;
+  // 4. 如果都不匹配且不是 hex 格式，則視為無效 ID
+  return /^[a-f0-9]+$/i.test(trimmed) ? trimmed : '';
 };
 
 export const syncToGoogle = async (url: string, data: any) => {
@@ -57,14 +62,12 @@ export const fetchFromGoogle = async (url: string) => {
 
 /**
  * 同步到 GitHub
- * 如果 ID 無效，會自動建立一個新的 Gist 並回傳 ID
  */
 export const syncToGitHub = async (token: string, rawGistId: string, data: any) => {
   if (!token) return { success: false, message: '請先輸入 GitHub Token' };
   
   const gistId = sanitizeGistId(rawGistId);
-  // 只有符合 16 進位 20-32 碼的才是有效 ID，否則視為「需要新建」
-  const isValidId = /^[a-f0-9]{20,32}$/i.test(gistId);
+  const isValidId = gistId && /^[a-f0-9]{20,32}$/i.test(gistId);
   
   const url = isValidId 
     ? `https://api.github.com/gists/${gistId}` 
@@ -94,10 +97,10 @@ export const syncToGitHub = async (token: string, rawGistId: string, data: any) 
     if (!response.ok) {
         const err = await response.json();
         if (response.status === 404) {
-          return { success: false, message: '找不到該 Gist。如果您貼的是網址，請確保是 Gist 的網址而非個人主頁。' };
+          return { success: false, message: '找不到該 Gist。如果您是首次使用，請清空 ID 欄位後再點擊上傳。' };
         }
         if (response.status === 401) {
-          return { success: false, message: 'Token 無效或已過期。' };
+          return { success: false, message: 'Token 無效。請檢查您的 GitHub Token 是否正確。' };
         }
         return { success: false, message: err.message || '同步失敗' };
     }
@@ -113,9 +116,7 @@ export const fetchFromGitHub = async (token: string, rawGistId: string) => {
   if (!token || !rawGistId) return null;
   const gistId = sanitizeGistId(rawGistId);
 
-  // 下載前強制檢查 ID 格式
-  if (!/^[a-f0-9]{20,32}$/i.test(gistId)) {
-    console.error("無效的 Gist ID 格式，無法下載。");
+  if (!gistId || !/^[a-f0-9]{20,32}$/i.test(gistId)) {
     return null;
   }
 
@@ -127,9 +128,7 @@ export const fetchFromGitHub = async (token: string, rawGistId: string) => {
       }
     });
 
-    if (!response.ok) {
-        return null;
-    }
+    if (!response.ok) return null;
 
     const gist = await response.json();
     if (!gist?.files?.["opscentre_data.json"]) return null;
@@ -137,7 +136,6 @@ export const fetchFromGitHub = async (token: string, rawGistId: string) => {
     const content = gist.files["opscentre_data.json"].content;
     return content ? JSON.parse(content) : null;
   } catch (error) {
-    console.error("GitHub 數據下載錯誤:", error);
     return null;
   }
 };
